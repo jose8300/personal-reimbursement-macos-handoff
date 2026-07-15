@@ -513,6 +513,16 @@ select:focus-visible {
   font-weight: 800;
 }
 
+.danger-action {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.danger-action:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #f87171;
+}
+
 .compact-danger-action {
   min-height: 36px;
   flex: 0 0 auto;
@@ -700,7 +710,36 @@ select:focus-visible {
 .auto-rule-actions button:hover {
   background: #eef1f6;
   border-color: #b9c5d4;
-}.auto-rule-option {
+}
+
+.auto-rule-scroll-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #eef1f6;
+}
+
+.auto-rule-scroll-buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #cfd7e3;
+  background: #f7f9fc;
+  color: #4a5568;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.auto-rule-scroll-buttons button:hover {
+  background: #eef1f6;
+  border-color: #b9c5d4;
+}
+
+.auto-rule-option {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;

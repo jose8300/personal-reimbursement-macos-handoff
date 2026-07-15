@@ -1,14 +1,17 @@
 import { autoUpdate, flip, FloatingPortal, offset, shift, useFloating } from '@floating-ui/react';
 import * as Popover from '@radix-ui/react-popover';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Toaster, toast } from 'sonner';
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  ChevronDown,
+  ChevronUp,
   Download,
   Filter,
   FileSpreadsheet,
+  Trash2,
   Upload,
 } from 'lucide-react';
 import './App.css';
@@ -591,8 +594,10 @@ function App() {
     resultExcludeRules.map((rule) => rule.id),
   );
   const [resultExcludeHistory, setResultExcludeHistory] = useState<Record<ResultExcludeRuleId, string[][]>>(
-    createEmptyResultExcludeHistory,
+    createEmptyResultExcludeHistory(),
   );
+  const autoRuleListRef = useRef<HTMLDivElement>(null);
+
   const [localProgressInfo, setLocalProgressInfo] = useState<LocalProgressDraftInfo | null>(
     getLocalProgressDraftInfo,
   );
@@ -913,6 +918,40 @@ function App() {
       ),
     );
     toast.info('已移出报销结果');
+  }
+
+  function scrollAutoRuleListToTop() {
+    autoRuleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function scrollAutoRuleListToBottom() {
+    autoRuleListRef.current?.scrollTo({ top: autoRuleListRef.current.scrollHeight, behavior: 'smooth' });
+  }
+
+  function deleteSelectedFiltered() {
+    const selectedIds = new Set(selectedRecords.map((r) => r.id));
+    if (!selectedIds.size || !filteredRecords.length) return;
+    if (
+      !window.confirm(
+        `确定删除已选的 ${selectedIds.size} 条记录吗？删除后会从消费筛选和报销结果中同时移除。`,
+      )
+    )
+      return;
+    setRecords((current) => current.filter((record) => !selectedIds.has(record.id)));
+    setResultExcludeHistory(createEmptyResultExcludeHistory());
+    toast.success(`已删除 ${selectedIds.size} 条记录`);
+  }
+
+  function invertSelectedFiltered() {
+    const selectedIds = new Set(selectedRecords.map((r) => r.id));
+    setRecords((current) =>
+      current.map((record) =>
+        filteredRecords.some((f) => f.id === record.id)
+          ? { ...record, isCompanyExpense: !selectedIds.has(record.id) }
+          : record,
+      ),
+    );
+    toast.success('已反转当前筛选结果的选中状态');
   }
 
   function shouldIgnoreRowClick(target: EventTarget | null) {
@@ -2305,7 +2344,7 @@ function App() {
                     <button type="button" onClick={selectAllAutoRules}>全选</button>
                     <button type="button" onClick={invertAutoRules}>反选</button>
                   </div>
-                  <div className="auto-rule-list">
+                  <div className="auto-rule-list" ref={autoRuleListRef}>
                     {autoReimbursementRules.map((rule) => (
                       <label key={rule.id} className="auto-rule-option">
                         <input
@@ -2320,6 +2359,14 @@ function App() {
                         <em>{autoRuleMatchCounts[rule.id]} 条</em>
                       </label>
                     ))}
+                  </div>
+                  <div className="auto-rule-scroll-buttons">
+                    <button type="button" onClick={scrollAutoRuleListToTop} title="到顶">
+                      <ChevronUp size={14} />
+                    </button>
+                    <button type="button" onClick={scrollAutoRuleListToBottom} title="到底">
+                      <ChevronDown size={14} />
+                    </button>
                   </div>
                   </Popover.Content>
                 </Popover.Portal>
@@ -2341,6 +2388,31 @@ function App() {
               onToggle={toggleExpenseColumnVisibility}
               onReorder={reorderExpenseColumn}
             />
+            <button
+              type="button"
+              className="ghost-button compact-secondary-action"
+              disabled={!filteredRecords.length}
+              onClick={() => setCompanyExpenseForFiltered(true)}
+            >
+              全选
+            </button>
+            <button
+              type="button"
+              className="ghost-button compact-secondary-action"
+              disabled={!filteredRecords.length}
+              onClick={invertSelectedFiltered}
+            >
+              反选
+            </button>
+            <button
+              type="button"
+              className="ghost-button compact-secondary-action danger-action"
+              disabled={!selectedRecords.length}
+              onClick={deleteSelectedFiltered}
+            >
+              <Trash2 size={14} />
+              删除
+            </button>
           </div>
 
           <div className="selection-tools">

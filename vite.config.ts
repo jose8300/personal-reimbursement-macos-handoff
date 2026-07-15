@@ -25,6 +25,32 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
     __APP_BUILD_TIME__: JSON.stringify(buildTime.replace(/\//g, '-')),
   },
+  build: {
+    // 把体积大且相对稳定的依赖拆成独立 chunk，避免单个 1.7MB 包并消除分块警告
+    chunkSizeWarningLimit: 1500,
+    rolldownOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@e965/xlsx') || id.includes('exceljs') || id.includes('/xlsx/')) return 'sheet';
+            if (id.includes('papaparse')) return 'papaparse';
+            if (
+              id.includes('node_modules/react-dom') ||
+              id.includes('node_modules/react/') ||
+              id.includes('node_modules/scheduler')
+            ) return 'react-vendor';
+            if (
+              id.includes('@radix-ui') ||
+              id.includes('@floating-ui') ||
+              id.includes('lucide-react') ||
+              id.includes('sonner')
+            ) return 'ui';
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': 'http://127.0.0.1:8787',

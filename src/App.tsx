@@ -19,7 +19,7 @@ import './App.css';
 // 由 vite.config.ts 的 define 在构建时注入（版本号与构建时间）
 declare const __APP_VERSION__: string;
 declare const __APP_BUILD_TIME__: string;
-import { adjustedWorkdays, holidayRanges } from './config/holidayWindows';
+import { holidayRanges } from './config/holidayWindows';
 import type { ExpenseRecord, ParseSummary } from './types/expense';
 import { classifyExpenseRecord, fillMissingClassification } from './utils/classifyExpense';
 import { exportReimbursementsAsCsv, exportReimbursementsAsXlsx, toReimbursementRecords } from './utils/exporters';
@@ -30,7 +30,20 @@ import {
   recordMatchesAnyAutoReimbursementRule,
   type AutoReimbursementRuleId,
 } from './utils/initialReimbursementSelection';
+import { Footer } from './components/Footer';
 import { parseBillFiles } from './utils/parseBills';
+import {
+  addDays,
+  createMonthSelectOptions,
+  dateToTime,
+  getRecordText,
+  getRecordReimbursementMonth,
+  insertAfter,
+  isAdjustedWorkday,
+  isLegalHolidayDate,
+  reorderItem,
+  valueMatchesFilter,
+} from './utils/appHelpers';
 import { parseReimbursementResultFiles } from './utils/parseReimbursementResults';
 import { toFeishuSyncItem } from './utils/reimbursementSync';
 
@@ -91,24 +104,6 @@ type ResultColumnKey =
   | 'paymentAccount'
   | 'sourcePlatform'
   | 'note';
-
-function getRecordReimbursementMonth(record: ExpenseRecord) {
-  return record.reimbursementMonth || getMonth(record.dateTime);
-}
-
-function createMonthSelectOptions(records: ExpenseRecord[]) {
-  const years = new Set<string>();
-  records.forEach((record) => {
-    const month = getRecordReimbursementMonth(record);
-    if (/^\d{4}-\d{2}$/.test(month)) years.add(month.slice(0, 4));
-  });
-  if (!years.size) years.add(String(new Date().getFullYear()));
-  return Array.from(years)
-    .sort()
-    .flatMap((year) =>
-      Array.from({ length: 12 }, (_, index) => `${year}-${String(index + 1).padStart(2, '0')}`),
-    );
-}
 
 const columnFilterLabels: Record<ColumnFilterKey, string> = {
   sourcePlatform: '来源平台',
@@ -321,63 +316,12 @@ function createEmptyFilterQueries(): Record<ColumnFilterKey, string> {
   return Object.fromEntries(columnFilterKeys.map((key) => [key, ''])) as Record<ColumnFilterKey, string>;
 }
 
-function valueMatchesFilter(value: string, filter: ColumnFilterValue) {
-  if (!filter.values.length) return true;
-  const isSelected = filter.values.includes(value);
-  return filter.mode === 'include' ? isSelected : !isSelected;
-}
-
-function insertAfter<T>(items: T[], target: T, item: T) {
-  if (items.includes(item)) return items;
-  const index = items.indexOf(target);
-  if (index < 0) return [...items, item];
-  return [...items.slice(0, index + 1), item, ...items.slice(index + 1)];
-}
-
-function reorderItem<T>(items: T[], draggedItem: T, targetItem: T, placement: 'before' | 'after') {
-  if (draggedItem === targetItem) return items;
-  const withoutDragged = items.filter((item) => item !== draggedItem);
-  const targetIndex = withoutDragged.indexOf(targetItem);
-  if (targetIndex < 0) return items;
-  const next = [...items];
-  const insertIndex = placement === 'before' ? targetIndex : targetIndex + 1;
-  next.splice(0, next.length, ...withoutDragged.slice(0, insertIndex), draggedItem, ...withoutDragged.slice(insertIndex));
-  return next;
-}
-
-function isLegalHolidayDate(dateTime: string) {
-  const date = getDateOnly(dateTime);
-  return holidayRanges.some((range) => date >= range.start && date <= range.end);
-}
-
-function isAdjustedWorkday(dateTime: string) {
-  return adjustedWorkdays.includes(getDateOnly(dateTime));
-}
-
 function getWeekdayDisplay(dateTime: string) {
   const weekday = getWeekdayLabel(dateTime);
   if (!weekday) return '';
   if (isLegalHolidayDate(dateTime)) return `${weekday}(休)`;
   if (weekendValues.includes(weekday) && isAdjustedWorkday(dateTime)) return `${weekday}(班)`;
   return weekday;
-}
-
-function dateToTime(date: string) {
-  const match = date.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (!match) return NaN;
-  const [, year, month, day] = match;
-  return new Date(Number(year), Number(month) - 1, Number(day)).getTime();
-}
-
-function addDays(date: string, days: number) {
-  const time = dateToTime(date);
-  if (Number.isNaN(time)) return '';
-  const next = new Date(time);
-  next.setDate(next.getDate() + days);
-  const year = next.getFullYear();
-  const month = String(next.getMonth() + 1).padStart(2, '0');
-  const day = String(next.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 function isNearLegalHoliday(date: string, bufferDays: number) {
@@ -395,20 +339,6 @@ function isNearWeekend(dateTime: string, bufferDays: number) {
   return Array.from({ length: bufferDays * 2 + 1 }, (_, index) => index - bufferDays).some((offset) =>
     weekendValues.includes(getWeekdayLabel(addDays(date, offset))),
   );
-}
-
-function getRecordText(record: ExpenseRecord) {
-  return [
-    record.transactionType,
-    record.counterparty,
-    record.productName,
-    record.billRemark,
-    record.merchant,
-    record.note,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
 }
 
 function isHighwayTravelExpense(record: ExpenseRecord) {
@@ -2659,11 +2589,7 @@ function App() {
         ))}
       </datalist>
     </main>
-    <footer className="app-footer">
-      <span>版本 v{__APP_VERSION__}</span>
-      <span className="footer-sep">·</span>
-      <span>更新于 {__APP_BUILD_TIME__}</span>
-    </footer>
+    <Footer version={__APP_VERSION__} buildTime={__APP_BUILD_TIME__} />
   </>
 );
 }

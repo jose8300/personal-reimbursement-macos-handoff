@@ -7,6 +7,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.2.6',
+    date: '2026-07-15',
+    title: '进度可分享化',
+    changes: [
+      '页脚新增「分享进度」：把本地进度压缩编码后生成可分享链接（或分享码）并复制到剪贴板',
+      '打开他人发来的分享链接，自动从地址栏 hash 恢复进度，无需下载/导入文件',
+      '导入兼容「分享码（PR1:）」与原有 JSON 备份两种格式',
+    ],
+  },
+  {
     version: '1.2.5',
     date: '2026-07-15',
     title: '本地进度备份 / 恢复',

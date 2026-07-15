@@ -7,6 +7,7 @@ export function Footer({
   onExportBackup,
   onImportFile,
   onImportFromClipboard,
+  onShareProgress,
 }: {
   version: string;
   buildTime: string;
@@ -14,6 +15,7 @@ export function Footer({
   onExportBackup: () => void;
   onImportFile: (file: File) => void;
   onImportFromClipboard: (text: string) => void;
+  onShareProgress: () => void;
 }) {
   const importInputRef = useRef<HTMLInputElement>(null);
   return (
@@ -29,14 +31,17 @@ export function Footer({
       <button type="button" className="footer-link" onClick={onExportBackup}>
         导出备份
       </button>
+      <button type="button" className="footer-link" onClick={onShareProgress}>
+        分享进度
+      </button>
       <button
         type="button"
         className="footer-link"
         onClick={async () => {
-          // 优先从剪贴板读取（导出时已复制）；读不到再走文件选择
+          // 优先从剪贴板读取（导出/分享时已复制）；读不到再走文件选择
           try {
             const text = await navigator.clipboard.readText();
-            if (text && text.includes('personal-reimbursement')) {
+            if (text && (text.includes('personal-reimbursement') || text.trimStart().startsWith('PR1:'))) {
               onImportFromClipboard(text);
               return;
             }

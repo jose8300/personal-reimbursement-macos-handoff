@@ -15,6 +15,7 @@ import {
   Upload,
 } from 'lucide-react';
 import './App.css';
+import { shareState, parseSharedCode, getStateFromHash, clearStateHash } from './utils/stateShare';
 
 // 由 vite.config.ts 的 define 在构建时注入（版本号与构建时间）
 declare const __APP_VERSION__: string;
@@ -384,22 +385,10 @@ function exportLocalBackup() {
   toast.success('已导出本地进度备份（文件已下载，并尝复制到剪贴板）');
 }
 
-// 跨源迁移：从备份文本（文件或剪贴板）恢复本地进度（覆盖当前源的对应键）
-async function applyImportFromText(text: string) {
+// 跨源迁移 / 分享恢复：把解析出的本地键映射写回 localStorage 并刷新
+async function applySharedData(data: Record<string, string | null>, skipConfirm = false) {
   if (typeof window === 'undefined') return;
-  let payload: unknown;
-  try {
-    payload = JSON.parse(text);
-  } catch {
-    toast.error('备份格式不正确：不是有效的 JSON');
-    return;
-  }
-  const data = (payload as { data?: Record<string, unknown> } | null)?.data;
-  if (!data || typeof data !== 'object') {
-    toast.error('备份格式不正确：缺少 data 字段');
-    return;
-  }
-  if (!window.confirm('导入备份会覆盖当前网站的本地进度，确定继续吗？')) return;
+  if (!skipConfirm && !window.confirm('导入备份会覆盖当前网站的本地进度，确定继续吗？')) return;
   let count = 0;
   for (const key of BACKUP_KEYS) {
     const value = data[key];
@@ -420,14 +409,52 @@ async function applyImportFromText(text: string) {
   window.setTimeout(() => window.location.reload(), 700);
 }
 
+// 从文本恢复：支持分享码（PR1: 前缀）或原有 JSON 备份
+async function applyImportFromText(text: string) {
+  if (typeof window === 'undefined') return;
+  const trimmed = text.trim();
+  if (trimmed.startsWith('PR1:')) {
+    const data = await parseSharedCode(trimmed);
+    if (!data) {
+      toast.error('分享码无法解析或已损坏');
+      return;
+    }
+    await applySharedData(data);
+    return;
+  }
+  let payload: unknown;
+  try {
+    payload = JSON.parse(trimmed);
+  } catch {
+    toast.error('备份格式不正确：不是有效的 JSON');
+    return;
+  }
+  const data = (payload as { data?: Record<string, unknown> } | null)?.data;
+  if (!data || typeof data !== 'object') {
+    toast.error('备份格式不正确：缺少 data 字段');
+    return;
+  }
+  await applySharedData(data as Record<string, string | null>);
+}
+
 // 从文件导入（隐藏 file input 触发）
 async function importLocalBackup(file: File) {
   applyImportFromText(await file.text());
 }
 
-// 从剪贴板导入（导出时已复制到剪贴板，新站点点导入即可，无需下载文件）
+// 从剪贴板导入（导出/分享时已复制到剪贴板，新站点点导入即可，无需下载文件）
 function importFromClipboard(text: string) {
   applyImportFromText(text);
+}
+
+// 分享进度：生成可分享链接或分享码并复制到剪贴板
+async function shareProgress() {
+  const kind = await shareState();
+  if (kind === 'url') {
+    toast.success('已生成分享链接并复制，发给别人打开即恢复进度');
+  } else {
+    toast.success('进度已压缩为分享码并复制，粘贴到新设备「导入备份」即可恢复');
+  }
 }
 
 function createProgressVersion(kind: ProgressVersion['kind'], recordCount: number, selectedCount: number): ProgressVersion {
@@ -916,6 +943,19 @@ function App() {
   useEffect(() => {
     saveLocalProgressRef.current = saveLocalProgress;
   });
+
+  // 打开他人发来的「分享链接」时，自动从地址栏 hash 恢复进度（用户主动打开，跳过确认）
+  useEffect(() => {
+    (async () => {
+      const code = getStateFromHash();
+      if (!code) return;
+      const data = await parseSharedCode(code);
+      clearStateHash();
+      if (data) await applySharedData(data, true);
+    })();
+    // 仅挂载时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!records.length) return;
@@ -2953,6 +2993,7 @@ function App() {
       onExportBackup={exportLocalBackup}
       onImportFile={importLocalBackup}
       onImportFromClipboard={importFromClipboard}
+      onShareProgress={shareProgress}
     />
     <div className="page-scroll-buttons">
       <button type="button" title="回到顶部" onClick={() => window.scrollTo({ top: 0 })}>

@@ -6,7 +6,8 @@ export type AutoReimbursementRuleId =
   | 'largeExpense'
   | 'ctripOrder'
   | 'weekdayDiningOver100'
-  | 'highwayFeeOver10';
+  | 'highwayFeeOver10'
+  | 'uncleXia';
 
 export type AutoReimbursementRule = {
   id: AutoReimbursementRuleId;
@@ -18,6 +19,11 @@ const largeExpenseMinimumAmount = 1000;
 const highwayMinimumAmount = 10;
 const highwayKeywords = ['高速', '高速公路', '通行费', '过路费', 'etc'];
 const ctripKeywords = ['携程', '程支付', '赫程', '华程'];
+const uncleXiaKeywords = [
+  '保险', '亲情卡', 'etc', '备用金',
+  '1688增值服务', '转账', '燃气',
+  '中国移动', '国网厦门供电公司',
+];
 
 export const autoReimbursementRules: AutoReimbursementRule[] = [
   {
@@ -39,6 +45,11 @@ export const autoReimbursementRules: AutoReimbursementRule[] = [
     id: 'highwayFeeOver10',
     label: '高速费',
     description: '高速、ETC、通行费、过路费，且金额不低于 10 元',
+  },
+  {
+    id: 'uncleXia',
+    label: '虾叔规则',
+    description: '保险、亲情卡、ETC、备用金、1688增值服务、转账、燃气、中国移动、国网厦门供电公司',
   },
 ];
 
@@ -69,6 +80,11 @@ function isCtripExpense(record: ExpenseRecord) {
   return ctripKeywords.some((keyword) => text.includes(keyword.toLowerCase()));
 }
 
+function isUncleXiaExpense(record: ExpenseRecord) {
+  const text = recordText(record);
+  return uncleXiaKeywords.some((keyword) => text.includes(keyword.toLowerCase()));
+}
+
 export function recordMatchesAutoReimbursementRule(
   record: ExpenseRecord,
   ruleId: AutoReimbursementRuleId,
@@ -84,6 +100,8 @@ export function recordMatchesAutoReimbursementRule(
       return classification.category === '餐饮' && isWeekday(record) && record.amount > 100;
     case 'highwayFeeOver10':
       return isHighwayExpense(record) && record.amount >= highwayMinimumAmount;
+    case 'uncleXia':
+      return isUncleXiaExpense(record);
     default:
       return false;
   }

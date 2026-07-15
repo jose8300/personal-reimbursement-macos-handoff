@@ -1447,6 +1447,27 @@ td input.amount-input {
   background: #f1fbf6;
 }
 
+.holiday-row {
+  background: #fff4f2;
+}
+
+.holiday-row:hover {
+  background: #ffe9e4;
+}
+
+.weekday-holiday-tag {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e8553e;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
 .amount {
   color: #a33b1f;
   font-weight: 700;

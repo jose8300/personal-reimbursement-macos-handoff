@@ -363,6 +363,21 @@ function getWeekdayDisplay(dateTime: string) {
   return weekday;
 }
 
+function renderWeekdayContent(dateTime: string) {
+  const display = getWeekdayDisplay(dateTime);
+  if (!display) return '-';
+  const holidayMatch = display.match(/^(.+)\(休\)$/);
+  if (holidayMatch) {
+    return (
+      <>
+        {holidayMatch[1]}
+        <span className="weekday-holiday-tag">休</span>
+      </>
+    );
+  }
+  return display;
+}
+
 function isNearLegalHoliday(date: string, bufferDays: number) {
   const time = dateToTime(date);
   if (Number.isNaN(time)) return false;
@@ -1753,7 +1768,7 @@ function App() {
           </td>
         );
       case 'weekday':
-        return <td key={columnKey} className="weekday-column">{getWeekdayDisplay(record.dateTime) || '-'}</td>;
+        return <td key={columnKey} className="weekday-column">{renderWeekdayContent(record.dateTime)}</td>;
       case 'amount':
         return (
           <td key={columnKey} className="expense-amount-column">
@@ -2035,7 +2050,7 @@ function App() {
           </td>
         );
       case 'weekday':
-        return <td key={columnKey} className={getResultColumnClass(columnKey)}>{getWeekdayDisplay(record.dateTime) || '-'}</td>;
+        return <td key={columnKey} className={getResultColumnClass(columnKey)}>{renderWeekdayContent(record.dateTime)}</td>;
       case 'reimburser':
         return (
           <td key={columnKey} className={getResultColumnClass(columnKey)}>
@@ -2477,7 +2492,11 @@ function App() {
                 {sortedFilteredRecords.map((record) => (
                   <tr
                     key={record.id}
-                    className={record.isCompanyExpense ? 'expense-row selected-row' : 'expense-row'}
+                    className={[
+                      'expense-row',
+                      record.isCompanyExpense ? 'selected-row' : '',
+                      isLegalHolidayDate(record.dateTime) ? 'holiday-row' : '',
+                    ].filter(Boolean).join(' ')}
                     onClick={(event) => handleExpenseRowClick(event, record)}
                   >
                     {visibleExpenseColumnOrder.map((columnKey) => renderExpenseCell(columnKey, record))}
@@ -2669,7 +2688,10 @@ function App() {
               </thead>
               <tbody>
                 {sortedResultRecords.map((record) => (
-                  <tr key={record.id}>
+                  <tr
+                    key={record.id}
+                    className={isLegalHolidayDate(record.dateTime) ? 'holiday-row' : ''}
+                  >
                     {visibleResultColumnOrder.map((columnKey) => renderResultCell(columnKey, record))}
                   </tr>
                 ))}

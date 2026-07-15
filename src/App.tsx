@@ -1039,6 +1039,16 @@ function App() {
     );
   }
 
+  function selectAllAutoRules() {
+    setSelectedAutoRuleIds(autoReimbursementRules.map((r) => r.id));
+  }
+
+  function invertAutoRules() {
+    setSelectedAutoRuleIds((current) =>
+      autoReimbursementRules.map((r) => r.id).filter((id) => !current.includes(id)),
+    );
+  }
+
   function applyAutoRulesToFiltered() {
     if (!selectedAutoRuleIds.length) return;
     const matchedIds = new Set(
@@ -2290,6 +2300,10 @@ function App() {
                   <div className="auto-rule-menu-title">
                     <strong>一键筛入规则</strong>
                     <span>只作用于当前筛选结果</span>
+                  </div>
+                  <div className="auto-rule-actions">
+                    <button type="button" onClick={selectAllAutoRules}>全选</button>
+                    <button type="button" onClick={invertAutoRules}>反选</button>
                   </div>
                   <div className="auto-rule-list">
                     {autoReimbursementRules.map((rule) => (

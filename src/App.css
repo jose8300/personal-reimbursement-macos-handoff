@@ -675,9 +675,32 @@ select:focus-visible {
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
-.auto-rule-option {
+.auto-rule-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.auto-rule-actions button {
+  flex: 1;
+  min-height: 28px;
+  border-radius: 6px;
+  border: 1px solid #cfd7e3;
+  background: #f7f9fc;
+  font-size: 12px;
+  color: #4a5568;
+  cursor: pointer;
+  padding: 0 10px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.auto-rule-actions button:hover {
+  background: #eef1f6;
+  border-color: #b9c5d4;
+}.auto-rule-option {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;

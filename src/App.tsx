@@ -2444,8 +2444,20 @@ function App() {
                 <Popover.Portal>
                   <Popover.Content className="auto-rule-menu" align="start" sideOffset={7}>
                   <div className="auto-rule-menu-title">
-                    <strong>一键筛入规则</strong>
-                    <span>只作用于当前筛选结果</span>
+                    <div className="auto-rule-menu-title-left">
+                      <strong>一键筛入规则</strong>
+                      <span>只作用于当前筛选结果</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="auto-rule-goto-custom-btn"
+                      onClick={() => {
+                        const list = autoRuleListRef.current;
+                        if (list) list.scrollTop = list.scrollHeight;
+                      }}
+                    >
+                      + 自定义规则
+                    </button>
                   </div>
                   <div className="auto-rule-actions">
                     <button type="button" onClick={selectAllAutoRules}>全选</button>

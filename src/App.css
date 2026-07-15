@@ -847,10 +847,33 @@ select:focus-visible {
   color: #172033;
 }
 
+.auto-rule-menu-title-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
 .auto-rule-menu-title span {
   color: #667085;
   font-size: 12px;
   font-weight: 600;
+}
+
+.auto-rule-goto-custom-btn {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border: 1px solid #cfd7e3;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #176f52;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auto-rule-goto-custom-btn:hover {
+  background: #e7f3ec;
+  border-color: #176f52;
 }
 
 .auto-rule-list {

@@ -20,6 +20,8 @@ const buildTime = new Intl.DateTimeFormat('zh-CN', {
 
 // https://vite.dev/config/
 export default defineConfig({
+  // 相对路径 base：同一份构建既能在本地根路径预览，也能在 GitHub Pages 项目子路径下正确加载资源
+  base: './',
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),

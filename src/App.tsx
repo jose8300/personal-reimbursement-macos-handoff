@@ -2868,10 +2868,10 @@ function App() {
     </main>
     <Footer version={__APP_VERSION__} buildTime={__APP_BUILD_TIME__} onShowChangelog={() => setShowChangelog(true)} />
     <div className="page-scroll-buttons">
-      <button type="button" title="回到顶部" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+      <button type="button" title="回到顶部" onClick={() => window.scrollTo({ top: 0 })}>
         <ChevronUp />
       </button>
-      <button type="button" title="滚动到底部" onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })}>
+      <button type="button" title="滚动到底部" onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight })}>
         <ChevronDown />
       </button>
     </div>

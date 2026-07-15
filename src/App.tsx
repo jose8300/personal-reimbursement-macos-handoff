@@ -40,6 +40,7 @@ import {
   getRecordReimbursementMonth,
   insertAfter,
   isAdjustedWorkday,
+  pushVersion,
   isLegalHolidayDate,
   reorderItem,
   valueMatchesFilter,
@@ -216,6 +217,9 @@ const resultExcludeRules: ResultExcludeRule[] = [
 ];
 const highwayExpenseKeywords = ['高速', '高速公路', '通行费', '过路费', 'etc'];
 const localProgressDraftKey = 'personal-reimbursement-progress-v1';
+const localProgressVersionsKey = 'personal-reimbursement-progress-versions-v1';
+const MAX_PROGRESS_VERSIONS = 24;
+const AUTO_SAVE_INTERVAL_MS = 5 * 60 * 1000;
 
 function createEmptyResultExcludeHistory() {
   return resultExcludeRules.reduce(
@@ -256,6 +260,14 @@ type LocalProgressDraftInfo = {
   selectedCount: number;
 };
 
+type ProgressVersion = {
+  id: string;
+  savedAt: string;
+  recordCount: number;
+  selectedCount: number;
+  kind: 'auto' | 'manual';
+};
+
 function readLocalProgressDraft() {
   if (typeof window === 'undefined') return null;
   const raw = window.localStorage.getItem(localProgressDraftKey);
@@ -286,6 +298,33 @@ function formatSavedAt(savedAt: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date);
+}
+
+function readProgressVersions(): ProgressVersion[] {
+  if (typeof window === 'undefined') return [];
+  const raw = window.localStorage.getItem(localProgressVersionsKey);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as ProgressVersion[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeProgressVersions(versions: ProgressVersion[]) {
+  try {
+    window.localStorage.setItem(localProgressVersionsKey, JSON.stringify(versions));
+  } catch {
+    // 本地存储空间不足时静默忽略，不影响主草稿保存
+  }
+}
+
+function createProgressVersion(kind: ProgressVersion['kind'], recordCount: number, selectedCount: number): ProgressVersion {
+  const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return { id, savedAt: new Date().toISOString(), recordCount, selectedCount, kind };
 }
 
 function createEmptyResultFilters(): Record<ResultFilterKey, ColumnFilterValue> {
@@ -532,6 +571,7 @@ function App() {
     getLocalProgressDraftInfo,
   );
   const [localProgressMessage, setLocalProgressMessage] = useState('');
+  const [progressVersions, setProgressVersions] = useState<ProgressVersion[]>(readProgressVersions);
   const visibleExpenseColumnOrder = useMemo(
     () => expenseColumnOrder.filter((columnKey) => !hiddenExpenseColumnKeys.includes(columnKey)),
     [expenseColumnOrder, hiddenExpenseColumnKeys],
@@ -701,6 +741,17 @@ function App() {
     isAutoRuleMenuOpen,
     isResultExcludeRuleMenuOpen,
   ]);
+
+  const saveLocalProgressRef = useRef(saveLocalProgress);
+  useEffect(() => {
+    saveLocalProgressRef.current = saveLocalProgress;
+  });
+
+  useEffect(() => {
+    if (!records.length) return;
+    const timer = setInterval(() => saveLocalProgressRef.current('auto'), AUTO_SAVE_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [records.length]);
 
   async function handleFiles(fileList: FileList | null) {
     if (!fileList?.length) return;
@@ -1248,7 +1299,7 @@ function App() {
     setResultFilterQueries((current) => ({ ...current, [key]: query }));
   }
 
-  function saveLocalProgress() {
+  function saveLocalProgress(kind: ProgressVersion['kind'] = 'manual') {
     if (!records.length) return;
     const draft: LocalProgressDraft = {
       savedAt: new Date().toISOString(),
@@ -1274,9 +1325,16 @@ function App() {
     };
     try {
       window.localStorage.setItem(localProgressDraftKey, JSON.stringify(draft));
+
+      const selectedCount = records.filter((record) => record.isCompanyExpense).length;
+      const version = createProgressVersion(kind, records.length, selectedCount);
+      const nextVersions = pushVersion(progressVersions, version, MAX_PROGRESS_VERSIONS);
+      writeProgressVersions(nextVersions);
+      setProgressVersions(nextVersions);
       setLocalProgressInfo(getLocalProgressDraftInfo());
-      setLocalProgressMessage('已保存本地进度');
-      toast.success('已保存本地进度');
+      const message = kind === 'auto' ? '已自动保存' : '已保存本地进度';
+      setLocalProgressMessage(message);
+      if (kind === 'manual') toast.success(message);
     } catch {
       setLocalProgressMessage('保存失败，本地存储空间不足');
       toast.error('保存失败，本地存储空间不足');
@@ -2143,9 +2201,9 @@ function App() {
             type="button"
             className="ghost-button summary-clear-button"
             disabled={!records.length}
-            onClick={saveLocalProgress}
+            onClick={() => saveLocalProgress()}
           >
-            {records.length > 0 && localProgressMessage === '已保存本地进度' ? '已保存进度' : '保存进度'}
+            {records.length > 0 && (localProgressMessage === '已保存本地进度' || localProgressMessage === '已自动保存') ? '已保存进度' : '保存进度'}
           </button>
           {(activeTab === 'filter' || activeTab === 'result') && (
             <button
@@ -2220,6 +2278,27 @@ function App() {
             )}
             {localProgressMessage && <span className="draft-status">{localProgressMessage}</span>}
             {isParsing && <span className="muted">正在解析...</span>}
+            {progressVersions.length > 0 && (
+              <div className="version-history">
+                <div className="version-history-head">
+                  <span>保存版本（{progressVersions.length}）</span>
+                  <span className="version-history-hint">每 5 分钟自动保存</span>
+                </div>
+                <ul className="version-history-list">
+                  {progressVersions.map((version) => (
+                    <li key={version.id}>
+                      <span className="version-time">{formatSavedAt(version.savedAt)}</span>
+                      <span className={`version-tag ${version.kind}`}>
+                        {version.kind === 'auto' ? '自动' : '手动'}
+                      </span>
+                      <span className="version-count">
+                        {version.recordCount} 条 · 选 {version.selectedCount}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className="result-grid">

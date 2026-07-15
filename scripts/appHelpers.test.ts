@@ -9,6 +9,7 @@ import {
   insertAfter,
   isAdjustedWorkday,
   isLegalHolidayDate,
+  pushVersion,
   reorderItem,
   valueMatchesFilter,
 } from '../src/utils/appHelpers';
@@ -94,4 +95,14 @@ test('getRecordText 拼接非空字段并转小写', () => {
 test('isLegalHolidayDate / isAdjustedWorkday 基于节假日窗口返回布尔', () => {
   assert.equal(typeof isLegalHolidayDate('2024-01-01'), 'boolean');
   assert.equal(typeof isAdjustedWorkday('2024-01-01'), 'boolean');
+});
+
+test('pushVersion 新版本置顶并按上限裁剪', () => {
+  assert.deepEqual(pushVersion([1, 2], 0, 3), [0, 1, 2]);
+  // 超出上限时丢弃最旧的（末尾）
+  assert.deepEqual(pushVersion([1, 2, 3], 0, 3), [0, 1, 2]);
+  // 对象版本同样适用
+  const a = { id: 'a' };
+  const b = { id: 'b' };
+  assert.deepEqual(pushVersion([a], b, 5).map((v) => v.id), ['b', 'a']);
 });

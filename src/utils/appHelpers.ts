@@ -89,3 +89,8 @@ export function isLegalHolidayDate(dateTime: string) {
 export function isAdjustedWorkday(dateTime: string) {
   return adjustedWorkdays.includes(getDateOnly(dateTime));
 }
+
+export function pushVersion<T>(versions: T[], version: T, max: number): T[] {
+  const next = [version, ...versions];
+  return next.length > max ? next.slice(0, max) : next;
+}

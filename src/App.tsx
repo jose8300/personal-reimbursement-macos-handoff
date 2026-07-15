@@ -12,6 +12,10 @@ import {
   Upload,
 } from 'lucide-react';
 import './App.css';
+
+// 由 vite.config.ts 的 define 在构建时注入（版本号与构建时间）
+declare const __APP_VERSION__: string;
+declare const __APP_BUILD_TIME__: string;
 import { adjustedWorkdays, holidayRanges } from './config/holidayWindows';
 import type { ExpenseRecord, ParseSummary } from './types/expense';
 import { classifyExpenseRecord, fillMissingClassification } from './utils/classifyExpense';
@@ -2144,7 +2148,8 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <>
+      <main className="app-shell">
       <Toaster position="top-center" richColors closeButton />
       <header className="topbar">
         <div>
@@ -2568,7 +2573,13 @@ function App() {
         ))}
       </datalist>
     </main>
-  );
+    <footer className="app-footer">
+      <span>版本 v{__APP_VERSION__}</span>
+      <span className="footer-sep">·</span>
+      <span>更新于 {__APP_BUILD_TIME__}</span>
+    </footer>
+  </>
+);
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

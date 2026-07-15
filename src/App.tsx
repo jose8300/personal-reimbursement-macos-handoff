@@ -627,6 +627,13 @@ function App() {
   const filteredRecords = useMemo(() => {
     return visibleRecords.filter((record) => recordMatchesFilters(record, monthFilter, columnFilters));
   }, [visibleRecords, monthFilter, columnFilters]);
+
+  const hasActiveFilters = useMemo(() => {
+    if (monthFilter.values.length > 0 || monthQuery.trim()) return true;
+    if (amountSort !== 'none') return true;
+    if (!hideBankWalletRecords) return true;
+    return Object.values(columnFilters).some((f) => f.values.length > 0);
+  }, [monthFilter, monthQuery, amountSort, hideBankWalletRecords, columnFilters]);
   const sortedFilteredRecords = useMemo(() => {
     if (amountSort === 'none') return filteredRecords;
     return [...filteredRecords].sort((a, b) =>
@@ -2429,6 +2436,15 @@ function App() {
               <span>
                 显示 {filteredRecords.length} / {records.length} 条，当前筛选结果已选 {filteredSelectedCount} / {filteredRecords.length} 条
               </span>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  className={`ghost-button compact-secondary-action reset-filters-btn${!filteredRecords.length ? ' reset-filters-btn-urgent' : ''}`}
+                  onClick={clearFilters}
+                >
+                  重置筛选
+                </button>
+              )}
               <div className="action-row">
                 <button
                   type="button"
@@ -2469,7 +2485,17 @@ function App() {
                 ))}
               </tbody>
             </table>
-            {!filteredRecords.length && <div className="empty-state">当前筛选条件下没有消费记录。</div>}
+            {!filteredRecords.length && records.length > 0 && (
+              <div className="empty-state empty-state-with-action">
+                <span>当前筛选条件下没有消费记录，剩余 {records.length} 条未显示。</span>
+                {hasActiveFilters && (
+                  <button type="button" className="primary-button compact" onClick={clearFilters}>
+                    重置所有筛选条件
+                  </button>
+                )}
+              </div>
+            )}
+            {!records.length && <div className="empty-state">当前筛选条件下没有消费记录。</div>}
           </div>
 
           <div className="bottom-actions">

@@ -295,6 +295,26 @@ select:focus-visible {
   background: #ffffff;
 }
 
+.empty-state-with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reset-filters-btn {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  flex-shrink: 0;
+}
+
+.reset-filters-btn-urgent {
+  color: #d9534f;
+  border-color: #e8b4ae;
+}
+
 .mini-card span,
 .mini-card small {
   display: block;

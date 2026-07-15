@@ -1709,6 +1709,128 @@ td input.amount-input {
   color: #c4c9d2;
 }
 
+.footer-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #176f52;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.footer-link:hover {
+  color: #0f5a40;
+}
+
+.changelog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(23, 32, 51, 0.45);
+  padding: 20px;
+}
+
+.changelog-modal {
+  width: min(520px, calc(100vw - 32px));
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #cfd7e3;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(23, 32, 51, 0.28);
+  overflow: hidden;
+}
+
+.changelog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eef1f6;
+}
+
+.changelog-header h2 {
+  margin: 0;
+  font-size: 17px;
+  color: #172033;
+}
+
+.changelog-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: #f2f4f7;
+  color: #667085;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.changelog-close:hover {
+  background: #e6e9ef;
+  color: #344054;
+}
+
+.changelog-body {
+  padding: 8px 20px 18px;
+  overflow-y: auto;
+}
+
+.changelog-entry {
+  padding: 14px 0;
+  border-bottom: 1px solid #eef1f6;
+}
+
+.changelog-entry:last-child {
+  border-bottom: none;
+}
+
+.changelog-entry-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.changelog-version {
+  font-weight: 800;
+  color: #176f52;
+  font-size: 14px;
+}
+
+.changelog-date {
+  color: #98a2b3;
+  font-size: 12px;
+}
+
+.changelog-title {
+  color: #344054;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.changelog-changes {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.changelog-changes li {
+  color: #475467;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 @media (max-width: 640px) {
   .app-footer {
     font-size: 11px;

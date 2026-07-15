@@ -33,6 +33,7 @@ import {
   type AutoReimbursementRuleId,
   type CustomAutoRule,
 } from './utils/initialReimbursementSelection';
+import { changelog } from './changelog';
 import { Footer } from './components/Footer';
 import { parseBillFiles } from './utils/parseBills';
 import {
@@ -619,6 +620,7 @@ function App() {
   );
   const [localProgressMessage, setLocalProgressMessage] = useState('');
   const [progressVersions, setProgressVersions] = useState<ProgressVersion[]>(readProgressVersions);
+  const [showChangelog, setShowChangelog] = useState(false);
   const [showOnlySelected, setShowOnlySelected] = useState(false);
   const visibleExpenseColumnOrder = useMemo(
     () => expenseColumnOrder.filter((columnKey) => !hiddenExpenseColumnKeys.includes(columnKey)),
@@ -2852,7 +2854,7 @@ function App() {
         ))}
       </datalist>
     </main>
-    <Footer version={__APP_VERSION__} buildTime={__APP_BUILD_TIME__} />
+    <Footer version={__APP_VERSION__} buildTime={__APP_BUILD_TIME__} onShowChangelog={() => setShowChangelog(true)} />
     <div className="page-scroll-buttons">
       <button type="button" title="回到顶部" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
         <ChevronUp />
@@ -2861,6 +2863,34 @@ function App() {
         <ChevronDown />
       </button>
     </div>
+    {showChangelog && (
+      <div className="changelog-overlay" onClick={() => setShowChangelog(false)}>
+        <div className="changelog-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="changelog-header">
+            <h2>版本说明</h2>
+            <button type="button" className="changelog-close" onClick={() => setShowChangelog(false)}>
+              ✕
+            </button>
+          </div>
+          <div className="changelog-body">
+            {changelog.map((entry) => (
+              <section key={entry.version} className="changelog-entry">
+                <div className="changelog-entry-head">
+                  <span className="changelog-version">v{entry.version}</span>
+                  <span className="changelog-date">{entry.date}</span>
+                  <span className="changelog-title">{entry.title}</span>
+                </div>
+                <ul className="changelog-changes">
+                  {entry.changes.map((change, index) => (
+                    <li key={index}>{change}</li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
   </>
 );
 }

@@ -739,6 +739,37 @@ select:focus-visible {
   border-color: #b9c5d4;
 }
 
+.page-scroll-buttons {
+  position: fixed;
+  right: 20px;
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 100;
+}
+
+.page-scroll-buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #cfd7e3;
+  background: #ffffff;
+  color: #4a5568;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.page-scroll-buttons button:hover {
+  background: #eef1f6;
+  border-color: #b9c5d4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 .auto-rule-option {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

@@ -16,7 +16,17 @@ export function normalizeDateInput(value: unknown) {
     return date.toISOString().slice(0, 10);
   }
 
-  return String(value ?? '').trim();
+  const str = String(value ?? '').trim();
+  // 解析常见字符串日期格式（如支付宝导出的 MM/DD/YY HH:mm）
+  const dateMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+  if (dateMatch) {
+    const [, month, day, yearPart, hour = '0', minute = '0'] = dateMatch;
+    const second = '0';
+    const year = Number(yearPart) < 100 ? 2000 + Number(yearPart) : yearPart;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}`;
+  }
+
+  return str;
 }
 
 export function getDateOnly(dateTime: string) {

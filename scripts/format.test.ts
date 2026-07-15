@@ -47,6 +47,21 @@ test('normalizeDateInput 处理 Date/Excel序列/字符串', () => {
   assert.equal(typeof normalizeDateInput(45000), 'string');
 });
 
+test('normalizeDateInput 解析支付宝 MM/DD/YY HH:mm 格式', () => {
+  // 支付宝导出的日期格式（2位数年份+斜杠分隔）
+  assert.equal(normalizeDateInput('12/31/24 10:15'), '2024-12-31 10:15:00');
+  assert.equal(normalizeDateInput('12/31/24 0:14'), '2024-12-31 00:14:00');
+  assert.equal(normalizeDateInput('01/15/25 09:30'), '2025-01-15 09:30:00');
+  // 4位年份也能处理
+  assert.equal(normalizeDateInput('06/20/2024'), '2024-06-20 00:00:00');
+});
+
+test('getWeekdayLabel 支持支付宝日期格式', () => {
+  // 2024-12-31 是周二 — 这是之前不显示星期的根因
+  assert.equal(getWeekdayLabel('12/31/24 10:15'), '周二');
+  assert.equal(getWeekdayLabel('01/01/25 00:00'), '周三'); // 2025-01-01 是周三
+});
+
 test('formatCurrency 固定两位小数', () => {
   assert.equal(formatCurrency(1234.5), '1,234.50');
 });

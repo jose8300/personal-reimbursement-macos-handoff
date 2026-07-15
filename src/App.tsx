@@ -619,6 +619,7 @@ function App() {
   );
   const [localProgressMessage, setLocalProgressMessage] = useState('');
   const [progressVersions, setProgressVersions] = useState<ProgressVersion[]>(readProgressVersions);
+  const [showOnlySelected, setShowOnlySelected] = useState(false);
   const visibleExpenseColumnOrder = useMemo(
     () => expenseColumnOrder.filter((columnKey) => !hiddenExpenseColumnKeys.includes(columnKey)),
     [expenseColumnOrder, hiddenExpenseColumnKeys],
@@ -713,6 +714,11 @@ function App() {
       amountSort === 'asc' ? a.amount - b.amount : b.amount - a.amount,
     );
   }, [filteredRecords, amountSort]);
+
+  const displayExpenseRecords = useMemo(() => {
+    if (!showOnlySelected) return sortedFilteredRecords;
+    return sortedFilteredRecords.filter((record) => record.isCompanyExpense);
+  }, [sortedFilteredRecords, showOnlySelected]);
   const autoRuleMatchedCount = useMemo(
     () =>
       filteredRecords.filter((record) =>
@@ -1166,6 +1172,7 @@ function App() {
           : record,
       ),
     );
+    setShowOnlySelected(true);
     toast.success(`已筛入 ${matchedIds.size} 条报销结果`);
   }
 
@@ -2559,8 +2566,19 @@ function App() {
           <div className="selection-tools">
             <div className="selection-summary">
               <span>
-                显示 {filteredRecords.length} / {records.length} 条，当前筛选结果已选 {filteredSelectedCount} / {filteredRecords.length} 条
+                显示 {displayExpenseRecords.length} / {filteredRecords.length}
+                {showOnlySelected && selectedRecords.length > 0
+                  ? `（仅已选 ${selectedRecords.length} 条）`
+                  : ` 条，当前筛选结果已选 ${filteredSelectedCount} / ${filteredRecords.length} 条`}
               </span>
+              <label className={`only-selected-toggle${showOnlySelected ? ' active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={showOnlySelected}
+                  onChange={(event) => setShowOnlySelected(event.target.checked)}
+                />
+                仅显示已选
+              </label>
               {hasActiveFilters && (
                 <button
                   type="button"
@@ -2599,7 +2617,7 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {sortedFilteredRecords.map((record) => (
+                {displayExpenseRecords.map((record) => (
                   <tr
                     key={record.id}
                     className={[
@@ -2614,7 +2632,15 @@ function App() {
                 ))}
               </tbody>
             </table>
-            {!filteredRecords.length && records.length > 0 && (
+            {showOnlySelected && !displayExpenseRecords.length && filteredRecords.length > 0 && (
+              <div className="empty-state empty-state-with-action">
+                <span>当前没有已选中的记录，{filteredRecords.length} 条未选中记录被隐藏。</span>
+                <button type="button" className="primary-button compact" onClick={() => setShowOnlySelected(false)}>
+                  显示全部记录
+                </button>
+              </div>
+            )}
+            {!filteredRecords.length && records.length > 0 && !showOnlySelected && (
               <div className="empty-state empty-state-with-action">
                 <span>当前筛选条件下没有消费记录，剩余 {records.length} 条未显示。</span>
                 {hasActiveFilters && (

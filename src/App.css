@@ -315,6 +315,62 @@ select:focus-visible {
   border-color: #e8b4ae;
 }
 
+.only-selected-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid #cfd7e3;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #526070;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.only-selected-toggle:hover {
+  border-color: #176f52;
+  color: #176f52;
+}
+
+.only-selected-toggle.active {
+  background: #e7f3ec;
+  border-color: #176f52;
+  color: #176f52;
+}
+
+.only-selected-toggle input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #98a2b3;
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.only-selected-toggle input[type="checkbox"]:checked {
+  background: #176f52;
+  border-color: #176f52;
+}
+
+.only-selected-toggle input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: -1px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
 .mini-card span,
 .mini-card small {
   display: block;

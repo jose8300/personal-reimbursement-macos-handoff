@@ -27,8 +27,11 @@ import { formatCurrency, getDateOnly, getMonth, getWeekdayLabel, normalizeDateIn
 import {
   applyAutoReimbursementRules,
   autoReimbursementRules,
+  getAutoRuleDisplayList,
+  isBuiltinRuleId,
   recordMatchesAnyAutoReimbursementRule,
   type AutoReimbursementRuleId,
+  type CustomAutoRule,
 } from './utils/initialReimbursementSelection';
 import { Footer } from './components/Footer';
 import { parseBillFiles } from './utils/parseBills';
@@ -218,6 +221,7 @@ const resultExcludeRules: ResultExcludeRule[] = [
 const highwayExpenseKeywords = ['高速', '高速公路', '通行费', '过路费', 'etc'];
 const localProgressDraftKey = 'personal-reimbursement-progress-v1';
 const localProgressVersionsKey = 'personal-reimbursement-progress-versions-v1';
+const localCustomRulesKey = 'personal-reimbursement-custom-rules-v1';
 const MAX_PROGRESS_VERSIONS = 24;
 const AUTO_SAVE_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -252,6 +256,7 @@ type LocalProgressDraft = {
   selectedAutoRuleIds: AutoReimbursementRuleId[];
   selectedResultExcludeRuleIds: ResultExcludeRuleId[];
   resultExcludeHistory: Record<ResultExcludeRuleId, string[][]>;
+  customRules: CustomAutoRule[];
 };
 
 type LocalProgressDraftInfo = {
@@ -317,6 +322,30 @@ function writeProgressVersions(versions: ProgressVersion[]) {
     window.localStorage.setItem(localProgressVersionsKey, JSON.stringify(versions));
   } catch {
     // 本地存储空间不足时静默忽略，不影响主草稿保存
+  }
+}
+
+function readCustomRules(): CustomAutoRule[] {
+  if (typeof window === 'undefined') return [];
+  const raw = window.localStorage.getItem(localCustomRulesKey);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? (parsed as CustomAutoRule[]).filter(
+          (r) => r.id && r.label && Array.isArray(r.keywords),
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCustomRules(rules: CustomAutoRule[]) {
+  try {
+    window.localStorage.setItem(localCustomRulesKey, JSON.stringify(rules));
+  } catch {
+    // 静默忽略
   }
 }
 
@@ -574,6 +603,9 @@ function App() {
   const [selectedAutoRuleIds, setSelectedAutoRuleIds] = useState<AutoReimbursementRuleId[]>(
     autoReimbursementRules.map((rule) => rule.id),
   );
+  const [customRules, setCustomRules] = useState<CustomAutoRule[]>(readCustomRules);
+  const [newCustomLabel, setNewCustomLabel] = useState('');
+  const [newCustomKeywords, setNewCustomKeywords] = useState('');
   const [selectedResultExcludeRuleIds, setSelectedResultExcludeRuleIds] = useState<ResultExcludeRuleId[]>(
     resultExcludeRules.map((rule) => rule.id),
   );
@@ -643,6 +675,32 @@ function App() {
     return visibleRecords.filter((record) => recordMatchesFilters(record, monthFilter, columnFilters));
   }, [visibleRecords, monthFilter, columnFilters]);
 
+  const displayRules = useMemo(() => getAutoRuleDisplayList(customRules), [customRules]);
+
+  function addCustomRule() {
+    const label = newCustomLabel.trim();
+    const keywords = newCustomKeywords
+      .split(/[,，、\s]+/)
+      .map((k) => k.trim())
+      .filter(Boolean);
+    if (!label || !keywords.length) return;
+    const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const rule: CustomAutoRule = { id, label, keywords };
+    const next = [...customRules, rule];
+    setCustomRules(next);
+    writeCustomRules(next);
+    setSelectedAutoRuleIds((prev) => [...prev, id]);
+    setNewCustomLabel('');
+    setNewCustomKeywords('');
+  }
+
+  function deleteCustomRule(id: string) {
+    const next = customRules.filter((r) => r.id !== id);
+    setCustomRules(next);
+    writeCustomRules(next);
+    setSelectedAutoRuleIds((prev) => prev.filter((rid) => rid !== id));
+  }
+
   const hasActiveFilters = useMemo(() => {
     if (monthFilter.values.length > 0 || monthQuery.trim()) return true;
     if (amountSort !== 'none') return true;
@@ -658,19 +716,21 @@ function App() {
   const autoRuleMatchedCount = useMemo(
     () =>
       filteredRecords.filter((record) =>
-        recordMatchesAnyAutoReimbursementRule(record, selectedAutoRuleIds),
+        recordMatchesAnyAutoReimbursementRule(record, selectedAutoRuleIds, customRules),
       ).length,
-    [filteredRecords, selectedAutoRuleIds],
+    [filteredRecords, selectedAutoRuleIds, customRules],
   );
   const autoRuleMatchCounts = useMemo(
     () =>
       Object.fromEntries(
-        autoReimbursementRules.map((rule) => [
+        displayRules.map((rule) => [
           rule.id,
-          filteredRecords.filter((record) => recordMatchesAnyAutoReimbursementRule(record, [rule.id])).length,
+          filteredRecords.filter((record) =>
+            recordMatchesAnyAutoReimbursementRule(record, [rule.id], customRules),
+          ).length,
         ]),
       ) as Record<AutoReimbursementRuleId, number>,
-    [filteredRecords],
+    [filteredRecords, displayRules, customRules],
   );
 
   const reimbursements = useMemo(() => toReimbursementRecords(records), [records]);
@@ -1095,13 +1155,15 @@ function App() {
     if (!selectedAutoRuleIds.length) return;
     const matchedIds = new Set(
       filteredRecords
-        .filter((record) => recordMatchesAnyAutoReimbursementRule(record, selectedAutoRuleIds))
+        .filter((record) => recordMatchesAnyAutoReimbursementRule(record, selectedAutoRuleIds, customRules))
         .map((record) => record.id),
     );
     if (!matchedIds.size) return;
     setRecords((current) =>
       current.map((record) =>
-        matchedIds.has(record.id) ? applyAutoReimbursementRules(record, selectedAutoRuleIds) : record,
+        matchedIds.has(record.id)
+          ? applyAutoReimbursementRules(record, selectedAutoRuleIds, customRules)
+          : record,
       ),
     );
     toast.success(`已筛入 ${matchedIds.size} 条报销结果`);
@@ -1344,6 +1406,7 @@ function App() {
       selectedAutoRuleIds,
       selectedResultExcludeRuleIds,
       resultExcludeHistory,
+      customRules,
     };
     try {
       window.localStorage.setItem(localProgressDraftKey, JSON.stringify(draft));
@@ -1391,6 +1454,10 @@ function App() {
     setSelectedAutoRuleIds(draft.selectedAutoRuleIds);
     setSelectedResultExcludeRuleIds(draft.selectedResultExcludeRuleIds);
     setResultExcludeHistory({ ...createEmptyResultExcludeHistory(), ...draft.resultExcludeHistory });
+    if (draft.customRules) {
+      setCustomRules(draft.customRules);
+      writeCustomRules(draft.customRules);
+    }
     setOpenFilterKey(null);
     setOpenResultFilterKey(null);
     setIsAutoRuleMenuOpen(false);
@@ -2376,20 +2443,63 @@ function App() {
                     <button type="button" onClick={invertAutoRules}>反选</button>
                   </div>
                   <div className="auto-rule-list" ref={autoRuleListRef}>
-                    {autoReimbursementRules.map((rule) => (
-                      <label key={rule.id} className="auto-rule-option">
-                        <input
-                          type="checkbox"
-                          checked={selectedAutoRuleIds.includes(rule.id)}
-                          onChange={() => toggleAutoRule(rule.id)}
-                        />
-                        <span>
-                          <strong>{rule.label}</strong>
-                          <small>{rule.description}</small>
-                        </span>
-                        <em>{autoRuleMatchCounts[rule.id]} 条</em>
-                      </label>
-                    ))}
+                    {displayRules.map((rule) => {
+                      const isCustom = !isBuiltinRuleId(rule.id);
+                      return (
+                        <label key={rule.id} className={`auto-rule-option${isCustom ? ' custom-rule' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={selectedAutoRuleIds.includes(rule.id)}
+                            onChange={() => toggleAutoRule(rule.id)}
+                          />
+                          <span>
+                            <strong>{rule.label}</strong>
+                            <small>{rule.description}</small>
+                          </span>
+                          <em>{autoRuleMatchCounts[rule.id] ?? 0} 条</em>
+                          {isCustom && (
+                            <button
+                              type="button"
+                              className="custom-rule-delete-btn"
+                              title="删除自定义规则"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                event.preventDefault();
+                                deleteCustomRule(rule.id);
+                              }}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </label>
+                      );
+                    })}
+                    <div className="custom-rule-add-form">
+                      <div className="custom-rule-add-title">自定义规则</div>
+                      <input
+                        type="text"
+                        placeholder="规则名称（如：星巴克）"
+                        value={newCustomLabel}
+                        onChange={(e) => setNewCustomLabel(e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        placeholder="关键词，逗号分隔（如：星巴克,STARBUCKS）"
+                        value={newCustomKeywords}
+                        onChange={(e) => setNewCustomKeywords(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="primary-button compact"
+                        disabled={!newCustomLabel.trim() || !newCustomKeywords.trim()}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          addCustomRule();
+                        }}
+                      >
+                        添加规则
+                      </button>
+                    </div>
                   </div>
                   <div className="auto-rule-scroll-buttons">
                     <button type="button" onClick={scrollAutoRuleListToTop} title="到顶">

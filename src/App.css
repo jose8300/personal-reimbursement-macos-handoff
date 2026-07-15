@@ -888,7 +888,7 @@ select:focus-visible {
 
 .auto-rule-option {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 8px;
   border: 1px solid #d9e0ea;
@@ -896,6 +896,63 @@ select:focus-visible {
   padding: 8px 10px;
   background: #f7f9fc;
   cursor: pointer;
+}
+
+.auto-rule-option.custom-rule {
+  background: #fff9ed;
+  border-color: #e5d7b8;
+}
+
+.custom-rule-delete-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #98a2b3;
+  font-size: 12px;
+  line-height: 22px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.custom-rule-delete-btn:hover {
+  background: #fee4e2;
+  color: #d9534f;
+}
+
+.custom-rule-add-form {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e3e8ef;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.custom-rule-add-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #667085;
+}
+
+.custom-rule-add-form input[type="text"] {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #cfd7e3;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+}
+
+.custom-rule-add-form input[type="text"]:focus {
+  border-color: #176f52;
+  box-shadow: 0 0 0 2px rgba(22, 111, 82, 0.15);
+}
+
+.custom-rule-add-form button {
+  align-self: flex-end;
 }
 
 .result-exclude-menu {

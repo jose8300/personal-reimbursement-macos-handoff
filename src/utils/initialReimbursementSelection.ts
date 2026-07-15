@@ -15,12 +15,19 @@ export type AutoReimbursementRuleId =
   | 'transfer'
   | 'gas'
   | 'chinaMobile'
-  | 'stateGridXiamen';
+  | 'stateGridXiamen'
+  | string; // 自定义规则使用字符串 ID
 
 export type AutoReimbursementRule = {
   id: AutoReimbursementRuleId;
   label: string;
   description: string;
+};
+
+export type CustomAutoRule = {
+  id: string;
+  label: string;
+  keywords: string[];
 };
 
 const largeExpenseMinimumAmount = 1000;
@@ -145,6 +152,7 @@ function isUncleXiaKeywordExpense(record: ExpenseRecord, ruleId: AutoReimburseme
 export function recordMatchesAutoReimbursementRule(
   record: ExpenseRecord,
   ruleId: AutoReimbursementRuleId,
+  customRules?: CustomAutoRule[],
 ) {
   const classification = classifyExpenseRecord(record);
 
@@ -168,6 +176,11 @@ export function recordMatchesAutoReimbursementRule(
     case 'stateGridXiamen':
       return isUncleXiaKeywordExpense(record, ruleId);
     default:
+      // 自定义规则：按关键词匹配
+      if (customRules) {
+        const custom = customRules.find((r) => r.id === ruleId);
+        if (custom) return recordMatchesCustomRule(record, custom);
+      }
       return false;
   }
 }
@@ -175,15 +188,17 @@ export function recordMatchesAutoReimbursementRule(
 export function recordMatchesAnyAutoReimbursementRule(
   record: ExpenseRecord,
   ruleIds: AutoReimbursementRuleId[],
-) {
-  return ruleIds.some((ruleId) => recordMatchesAutoReimbursementRule(record, ruleId));
+  customRules?: CustomAutoRule[],
+): boolean {
+  return ruleIds.some((ruleId) => recordMatchesAutoReimbursementRule(record, ruleId, customRules));
 }
 
 export function applyAutoReimbursementRules(
   record: ExpenseRecord,
   ruleIds: AutoReimbursementRuleId[],
+  customRules?: CustomAutoRule[],
 ): ExpenseRecord {
-  if (!recordMatchesAnyAutoReimbursementRule(record, ruleIds)) return record;
+  if (!recordMatchesAnyAutoReimbursementRule(record, ruleIds, customRules)) return record;
   const classification = classifyExpenseRecord(record);
   return {
     ...record,
@@ -191,4 +206,32 @@ export function applyAutoReimbursementRules(
     project: record.project || classification.project,
     category: record.category || classification.category,
   };
+}
+
+export function recordMatchesCustomRule(
+  record: ExpenseRecord,
+  rule: CustomAutoRule,
+): boolean {
+  if (!rule.keywords.length) return false;
+  const text = recordText(record);
+  return rule.keywords.every((keyword) => text.includes(keyword.toLowerCase()));
+}
+
+export function getAutoRuleDisplayList(
+  customRules: CustomAutoRule[],
+): AutoReimbursementRule[] {
+  const builtIn = autoReimbursementRules as AutoReimbursementRule[];
+  const custom: AutoReimbursementRule[] = customRules.map((rule) => ({
+    id: rule.id,
+    label: rule.label,
+    description: `关键词：${rule.keywords.join('、')}`,
+    _custom: true as const,
+  }));
+  return [...builtIn, ...custom];
+}
+
+const BUILTIN_RULE_IDS = new Set(autoReimbursementRules.map((r) => r.id));
+
+export function isBuiltinRuleId(id: string): boolean {
+  return BUILTIN_RULE_IDS.has(id);
 }

@@ -384,14 +384,14 @@ function exportLocalBackup() {
   toast.success('已导出本地进度备份（文件已下载，并尝复制到剪贴板）');
 }
 
-// 跨源迁移：从备份 JSON 恢复本地进度（覆盖当前源的对应键）
-async function importLocalBackup(file: File) {
+// 跨源迁移：从备份文本（文件或剪贴板）恢复本地进度（覆盖当前源的对应键）
+async function applyImportFromText(text: string) {
   if (typeof window === 'undefined') return;
   let payload: unknown;
   try {
-    payload = JSON.parse(await file.text());
+    payload = JSON.parse(text);
   } catch {
-    toast.error('文件不是有效的备份 JSON');
+    toast.error('备份格式不正确：不是有效的 JSON');
     return;
   }
   const data = (payload as { data?: Record<string, unknown> } | null)?.data;
@@ -418,6 +418,16 @@ async function importLocalBackup(file: File) {
   }
   toast.success(`已导入 ${count} 项本地数据，即将刷新页面…`);
   window.setTimeout(() => window.location.reload(), 700);
+}
+
+// 从文件导入（隐藏 file input 触发）
+async function importLocalBackup(file: File) {
+  applyImportFromText(await file.text());
+}
+
+// 从剪贴板导入（导出时已复制到剪贴板，新站点点导入即可，无需下载文件）
+function importFromClipboard(text: string) {
+  applyImportFromText(text);
 }
 
 function createProgressVersion(kind: ProgressVersion['kind'], recordCount: number, selectedCount: number): ProgressVersion {
@@ -2941,7 +2951,8 @@ function App() {
       buildTime={__APP_BUILD_TIME__}
       onShowChangelog={() => setShowChangelog(true)}
       onExportBackup={exportLocalBackup}
-      onImportBackup={importLocalBackup}
+      onImportFile={importLocalBackup}
+      onImportFromClipboard={importFromClipboard}
     />
     <div className="page-scroll-buttons">
       <button type="button" title="回到顶部" onClick={() => window.scrollTo({ top: 0 })}>

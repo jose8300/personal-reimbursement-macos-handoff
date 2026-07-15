@@ -5,13 +5,15 @@ export function Footer({
   buildTime,
   onShowChangelog,
   onExportBackup,
-  onImportBackup,
+  onImportFile,
+  onImportFromClipboard,
 }: {
   version: string;
   buildTime: string;
   onShowChangelog: () => void;
   onExportBackup: () => void;
-  onImportBackup: (file: File) => void;
+  onImportFile: (file: File) => void;
+  onImportFromClipboard: (text: string) => void;
 }) {
   const importInputRef = useRef<HTMLInputElement>(null);
   return (
@@ -30,7 +32,19 @@ export function Footer({
       <button
         type="button"
         className="footer-link"
-        onClick={() => importInputRef.current?.click()}
+        onClick={async () => {
+          // 优先从剪贴板读取（导出时已复制）；读不到再走文件选择
+          try {
+            const text = await navigator.clipboard.readText();
+            if (text && text.includes('personal-reimbursement')) {
+              onImportFromClipboard(text);
+              return;
+            }
+          } catch {
+            // 剪贴板不可读，回退到文件选择
+          }
+          importInputRef.current?.click();
+        }}
       >
         导入备份
       </button>
@@ -41,7 +55,7 @@ export function Footer({
         style={{ display: 'none' }}
         onChange={(event) => {
           const file = event.target.files?.[0];
-          if (file) onImportBackup(file);
+          if (file) onImportFile(file);
           event.target.value = '';
         }}
       />

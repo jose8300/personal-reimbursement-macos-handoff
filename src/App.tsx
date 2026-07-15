@@ -350,6 +350,76 @@ function writeCustomRules(rules: CustomAutoRule[]) {
   }
 }
 
+// 需要随备份一起导出的本地存储键（进度草稿 / 版本历史 / 自定义规则）
+const BACKUP_KEYS = [localProgressDraftKey, localProgressVersionsKey, localCustomRulesKey];
+
+// 跨源迁移：把当前源的本地进度导出为 JSON 文件，并尝复制到剪贴板兜底
+function exportLocalBackup() {
+  if (typeof window === 'undefined') return;
+  const data: Record<string, string | null> = {};
+  for (const key of BACKUP_KEYS) {
+    data[key] = window.localStorage.getItem(key);
+  }
+  const payload = {
+    app: 'personal-reimbursement',
+    schema: 1,
+    exportedAt: new Date().toISOString(),
+    data,
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `报销进度备份-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  try {
+    navigator.clipboard?.writeText(json);
+  } catch {
+    // 剪贴板不可用时忽略，文件已下载
+  }
+  toast.success('已导出本地进度备份（文件已下载，并尝复制到剪贴板）');
+}
+
+// 跨源迁移：从备份 JSON 恢复本地进度（覆盖当前源的对应键）
+async function importLocalBackup(file: File) {
+  if (typeof window === 'undefined') return;
+  let payload: unknown;
+  try {
+    payload = JSON.parse(await file.text());
+  } catch {
+    toast.error('文件不是有效的备份 JSON');
+    return;
+  }
+  const data = (payload as { data?: Record<string, unknown> } | null)?.data;
+  if (!data || typeof data !== 'object') {
+    toast.error('备份格式不正确：缺少 data 字段');
+    return;
+  }
+  if (!window.confirm('导入备份会覆盖当前网站的本地进度，确定继续吗？')) return;
+  let count = 0;
+  for (const key of BACKUP_KEYS) {
+    const value = data[key];
+    if (typeof value === 'string') {
+      try {
+        window.localStorage.setItem(key, value);
+        count += 1;
+      } catch {
+        // 单键失败忽略
+      }
+    }
+  }
+  if (count === 0) {
+    toast.error('备份中未找到可恢复的数据');
+    return;
+  }
+  toast.success(`已导入 ${count} 项本地数据，即将刷新页面…`);
+  window.setTimeout(() => window.location.reload(), 700);
+}
+
 function createProgressVersion(kind: ProgressVersion['kind'], recordCount: number, selectedCount: number): ProgressVersion {
   const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -2866,7 +2936,13 @@ function App() {
         ))}
       </datalist>
     </main>
-    <Footer version={__APP_VERSION__} buildTime={__APP_BUILD_TIME__} onShowChangelog={() => setShowChangelog(true)} />
+    <Footer
+      version={__APP_VERSION__}
+      buildTime={__APP_BUILD_TIME__}
+      onShowChangelog={() => setShowChangelog(true)}
+      onExportBackup={exportLocalBackup}
+      onImportBackup={importLocalBackup}
+    />
     <div className="page-scroll-buttons">
       <button type="button" title="回到顶部" onClick={() => window.scrollTo({ top: 0 })}>
         <ChevronUp />

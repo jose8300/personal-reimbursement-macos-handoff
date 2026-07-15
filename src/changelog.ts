@@ -7,6 +7,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.2.5',
+    date: '2026-07-15',
+    title: '本地进度备份 / 恢复',
+    changes: [
+      '页脚新增「导出备份」「导入备份」：可把本地进度打包成 JSON 文件',
+      '支持跨源迁移：在旧地址导出、新地址导入，即可把进度搬到 GitHub Pages 站点',
+      '导出时同时尝试复制到剪贴板，方便无文件下载环境也能转移',
+    ],
+  },
+  {
     version: '1.2.4',
     date: '2026-07-15',
     title: '版本说明 + 筛入体验增强',

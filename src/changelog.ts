@@ -7,6 +7,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.4.1',
+    date: '2026-07-16',
+    title: '报销结果：金额锁定、批量备注、行级批量操作',
+    changes: [
+      '金额列改为只读固定数字（formatCurrency 展示），不可在表格内直接改动',
+      '备注列新增批量填入：工具栏输入内容后「批量填备注」一键写入当前筛选结果全部记录（回车即执行）',
+      '报销结果新增行级勾选：表头全选/反选（含半选 indeterminate 态），每行独立勾选',
+      '工具栏新增「全选 / 反选 / 删除选中」：批量将勾选记录移出报销结果',
+    ],
+  },
+  {
     version: '1.4.0',
     date: '2026-07-16',
     title: '等级三①：结构化报销单',

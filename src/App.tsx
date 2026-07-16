@@ -817,6 +817,7 @@ function App() {
   const [formColumns, setFormColumns] = useState<FormColumnKey[]>(
     () => readFormTemplates()[0]?.columns ?? [],
   );
+  const [selectedResultRowIds, setSelectedResultRowIds] = useState<Set<string>>(new Set());
   const [newTemplateName, setNewTemplateName] = useState('');
 
   const [localProgressInfo, setLocalProgressInfo] = useState<LocalProgressDraftInfo | null>(
@@ -1333,6 +1334,42 @@ function App() {
     );
     toast.success(`已为 ${filteredRecords.length} 条记录批量填入备注`);
     setBatchRemarkValue('');
+  }
+
+  // 报销结果行级选择
+  function selectAllResultRows() {
+    const ids = new Set(sortedResultRecords.map((r) => r.id));
+    setSelectedResultRowIds(ids);
+  }
+
+  function invertResultSelection() {
+    const allIds = new Set(sortedResultRecords.map((r) => r.id));
+    const next = new Set<string>();
+    for (const id of allIds) {
+      if (!selectedResultRowIds.has(id)) next.add(id);
+    }
+    setSelectedResultRowIds(next);
+  }
+
+  function toggleResultRowSelection(id: string) {
+    setSelectedResultRowIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function batchRemoveSelectedResults() {
+    if (!selectedResultRowIds.size) {
+      toast.error('请先勾选要移出的记录');
+      return;
+    }
+    const ids = Array.from(selectedResultRowIds);
+    setRecords((current) =>
+      current.map((record) => (ids.includes(record.id) ? { ...record, isCompanyExpense: false } : record)),
+    );
+    setSelectedResultRowIds(new Set());
+    toast.success(`已将 ${ids.length} 条记录移出报销结果`);
   }
 
   function shouldIgnoreRowClick(target: EventTarget | null) {
@@ -2447,7 +2484,24 @@ function App() {
             </Popover.Root>
           </div>
         ) : (
-          label
+          columnKey === 'remove' ? (
+            <div className="th-filter-label">
+              <input
+                type="checkbox"
+                checked={selectedResultRowIds.size > 0 && selectedResultRowIds.size === sortedResultRecords.length}
+                ref={(el) => {
+                  if (el) el.indeterminate = selectedResultRowIds.size > 0 && selectedResultRowIds.size < sortedResultRecords.length;
+                }}
+                onChange={() => {
+                  if (selectedResultRowIds.size === sortedResultRecords.length) setSelectedResultRowIds(new Set());
+                  else selectAllResultRows();
+                }}
+              />
+              <span>{label}</span>
+            </div>
+          ) : (
+            label
+          )
         )}
       </th>
     );
@@ -2482,6 +2536,12 @@ function App() {
         return (
           <td key={columnKey} className={getResultColumnClass(columnKey)}>
             <div className="row-action-stack">
+              <input
+                type="checkbox"
+                checked={selectedResultRowIds.has(record.id)}
+                onChange={() => toggleResultRowSelection(record.id)}
+                className="result-row-checkbox"
+              />
               <button
                 type="button"
                 className="ghost-button result-remove-button"
@@ -3337,6 +3397,31 @@ function App() {
                   </Popover.Content>
                 </Popover.Portal>
               </Popover.Root>
+              <button
+                type="button"
+                className="ghost-button compact-secondary-action"
+                disabled={!sortedResultRecords.length}
+                onClick={selectAllResultRows}
+              >
+                全选
+              </button>
+              <button
+                type="button"
+                className="ghost-button compact-secondary-action"
+                disabled={!sortedResultRecords.length}
+                onClick={invertResultSelection}
+              >
+                反选
+              </button>
+              <button
+                type="button"
+                className="ghost-button compact-secondary-action danger-action"
+                disabled={!selectedResultRowIds.size}
+                onClick={batchRemoveSelectedResults}
+              >
+                <Trash2 size={14} />
+                删除选中
+              </button>
               <ColumnVisibilityMenu
                 columns={resultColumnOrder}
                 labels={resultColumnLabels}

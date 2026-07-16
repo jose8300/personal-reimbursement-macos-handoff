@@ -1354,6 +1354,14 @@ td input.amount-input {
   justify-items: center;
 }
 
+.result-row-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #2f6bff;
+  margin: 0;
+}
+
 .row-delete-button {
   min-height: 28px;
   border-color: #f3c0b3;

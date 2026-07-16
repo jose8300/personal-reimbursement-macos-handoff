@@ -791,6 +791,7 @@ function App() {
   const [customRules, setCustomRules] = useState<CustomAutoRule[]>(readCustomRules);
   const [newCustomLabel, setNewCustomLabel] = useState('');
   const [newCustomKeywords, setNewCustomKeywords] = useState('');
+  const [batchRemarkValue, setBatchRemarkValue] = useState('');
   const [selectedResultExcludeRuleIds, setSelectedResultExcludeRuleIds] = useState<ResultExcludeRuleId[]>(
     resultExcludeRules.map((rule) => rule.id),
   );
@@ -1314,6 +1315,24 @@ function App() {
       ),
     );
     toast.success('已反转当前筛选结果的选中状态');
+  }
+
+  function applyBatchRemark() {
+    const value = batchRemarkValue.trim();
+    if (!value) {
+      toast.error('请输入要填入的备注内容');
+      return;
+    }
+    if (!filteredRecords.length) {
+      toast.error('当前筛选结果为空');
+      return;
+    }
+    const updatedIds = filteredRecords.map((r) => r.id);
+    setRecords((current) =>
+      current.map((record) => (updatedIds.includes(record.id) ? { ...record, billRemark: value } : record)),
+    );
+    toast.success(`已为 ${filteredRecords.length} 条记录批量填入备注`);
+    setBatchRemarkValue('');
   }
 
   function shouldIgnoreRowClick(target: EventTarget | null) {
@@ -2239,12 +2258,7 @@ function App() {
       case 'amount':
         return (
           <td key={columnKey} className="expense-amount-column">
-            <input
-              className="table-cell-input amount-input"
-              value={record.amount || ''}
-              placeholder="0.00"
-              onChange={(event) => updateRecordAmount(record.id, event.target.value)}
-            />
+            <span className="amount-readonly">{formatCurrency(record.amount)}</span>
           </td>
         );
       case 'transactionType':
@@ -2992,6 +3006,24 @@ function App() {
               <Trash2 size={14} />
               删除
             </button>
+            <span className="batch-remark-group">
+              <input
+                type="text"
+                className="table-cell-input batch-remark-input"
+                placeholder="批量填入备注…"
+                value={batchRemarkValue}
+                onChange={(event) => setBatchRemarkValue(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); applyBatchRemark(); } }}
+              />
+              <button
+                type="button"
+                className="ghost-button compact-secondary-action"
+                disabled={!batchRemarkValue.trim() || !filteredRecords.length}
+                onClick={applyBatchRemark}
+              >
+                批量填备注
+              </button>
+            </span>
           </div>
 
           <div className="selection-tools">

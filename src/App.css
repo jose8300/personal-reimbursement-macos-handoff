@@ -713,6 +713,18 @@ select:focus-visible {
   opacity: 0.45;
 }
 
+.batch-remark-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.batch-remark-input {
+  width: 160px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
 .compact-restore-action {
   min-height: 36px;
   flex: 0 0 auto;
@@ -1456,6 +1468,14 @@ td input.amount-input {
   min-width: 98px;
   max-width: 98px;
   white-space: nowrap;
+}
+
+.amount-readonly {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  width: 100%;
+  padding: 4px 6px;
 }
 
 .result-amount-column {

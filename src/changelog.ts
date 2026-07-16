@@ -7,6 +7,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.4.5',
+    date: '2026-07-16',
+    title: '批量文字替换（类 Excel 查找替换）',
+    changes: [
+      '消费筛选页与报销结果页均新增「批量替换」按钮：选择列（商品名称/交易对方/备注/支付账户等 6 列），填入查找值与替换值，一键改写所有已选记录',
+      '查找留空时直接覆写该列；非空时做子串匹配替换（支持部分匹配）',
+      'Popover 内回车即执行，操作后自动关闭并 toast 反馈影响条数',
+    ],
+  },
+  {
     version: '1.4.4',
     date: '2026-07-16',
     title: '报销结果工具栏：显示总行数与选中行数',

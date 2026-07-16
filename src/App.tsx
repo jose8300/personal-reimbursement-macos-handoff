@@ -11,6 +11,7 @@ import {
   Download,
   Filter,
   FileSpreadsheet,
+  Replace,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -822,6 +823,12 @@ function App() {
   const resultRowShiftKeyRef = useRef(false);
   const [newTemplateName, setNewTemplateName] = useState('');
 
+  // 批量替换
+  const [showBatchReplace, setShowBatchReplace] = useState(false);
+  const [batchReplaceColumn, setBatchReplaceColumn] = useState<keyof ExpenseRecord>('productName');
+  const [batchReplaceFrom, setBatchReplaceFrom] = useState('');
+  const [batchReplaceTo, setBatchReplaceTo] = useState('');
+
   const [localProgressInfo, setLocalProgressInfo] = useState<LocalProgressDraftInfo | null>(
     getLocalProgressDraftInfo,
   );
@@ -1336,6 +1343,55 @@ function App() {
     );
     toast.success(`已为 ${filteredRecords.length} 条记录批量填入备注`);
     setBatchRemarkValue('');
+  }
+
+  // 可批量替换的文本列（字段名 → 显示名）
+  const BATCH_REPLACE_COLUMNS: { key: keyof ExpenseRecord; label: string }[] = [
+    { key: 'productName', label: '商品名称' },
+    { key: 'counterparty', label: '交易对方' },
+    { key: 'billRemark', label: '备注' },
+    { key: 'paymentAccount', label: '支付账户' },
+    { key: 'transactionType', label: '交易类型' },
+    { key: 'merchant', label: '商户' },
+  ];
+
+  function applyBatchReplace() {
+    const from = batchReplaceFrom.trim();
+    const to = batchReplaceTo;
+    if (!to && to !== '') {
+      toast.error('请输入替换后的内容');
+      return;
+    }
+    // 消费筛选页：作用于已标记为公司消费的记录（selectedRecords）
+    const targets = activeTab === 'result'
+      ? Array.from(selectedResultRowIds)
+      : selectedRecords.map((r) => r.id);
+    if (!targets.length) {
+      toast.error(activeTab === 'result' ? '请先勾选要替换的记录' : '请先标记公司消费记录');
+      return;
+    }
+    const col = batchReplaceColumn;
+    let replaced = 0;
+    setRecords((current) =>
+      current.map((record) => {
+        if (!targets.includes(record.id)) return record;
+        const currentVal = String(record[col] ?? '');
+        // from 为空时直接覆写；非空时仅匹配命中才替换
+        if (!from || currentVal === from || currentVal.includes(from)) {
+          replaced += 1;
+          const newVal = !from ? to : currentVal.replace(from, to);
+          return { ...record, [col]: newVal };
+        }
+        return record;
+      }),
+    );
+    const colLabel = BATCH_REPLACE_COLUMNS.find((c) => c.key === col)?.label ?? col;
+    toast.success(
+      `已替换「${colLabel}」${replaced} 条记录${from ? `：${from} → ${to}` : `→ ${to}`}`,
+    );
+    setShowBatchReplace(false);
+    setBatchReplaceFrom('');
+    setBatchReplaceTo('');
   }
 
   // 报销结果行级选择
@@ -3277,6 +3333,70 @@ function App() {
                 批量填备注
               </button>
             </span>
+            <Popover.Root open={showBatchReplace} onOpenChange={setShowBatchReplace}>
+              <Popover.Trigger asChild>
+                <button
+                  type="button"
+                  className="ghost-button compact-secondary-action"
+                  disabled={!selectedRecords.length}
+                >
+                  <Replace size={14} />
+                  批量替换
+                </button>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content className="batch-replace-menu" align="start" sideOffset={7}>
+                  <div className="batch-replace-title">批量替换文字</div>
+                  <div className="batch-replace-body">
+                    <label className="batch-replace-field">
+                      替换列
+                      <select
+                        value={batchReplaceColumn}
+                        onChange={(e) => setBatchReplaceColumn(e.target.value as keyof ExpenseRecord)}
+                      >
+                        {BATCH_REPLACE_COLUMNS.map((c) => (
+                          <option key={c.key} value={c.key}>{c.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="batch-replace-field">
+                      查找（留空则直接覆写）
+                      <input
+                        type="text"
+                        className="table-cell-input"
+                        placeholder="如：日用百货"
+                        value={batchReplaceFrom}
+                        onChange={(e) => setBatchReplaceFrom(e.target.value)}
+                      />
+                    </label>
+                    <label className="batch-replace-field">
+                      替换为
+                      <input
+                        type="text"
+                        className="table-cell-input"
+                        placeholder="如：交通出行"
+                        value={batchReplaceTo}
+                        onChange={(e) => setBatchReplaceTo(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyBatchReplace(); } }}
+                      />
+                    </label>
+                    <div className="batch-replace-footer">
+                      <span className="batch-replace-hint">
+                        将作用于 {selectedRecords.length} 条已选记录
+                      </span>
+                      <button
+                        type="button"
+                        className="primary-button compact"
+                        disabled={!batchReplaceTo && batchReplaceTo !== ''}
+                        onClick={applyBatchReplace}
+                      >
+                        执行替换
+                      </button>
+                    </div>
+                  </div>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
           </div>
 
           <div className="selection-tools">
@@ -3623,6 +3743,70 @@ function App() {
                 <Trash2 size={14} />
                 删除选中
               </button>
+              <Popover.Root open={showBatchReplace} onOpenChange={setShowBatchReplace}>
+                <Popover.Trigger asChild>
+                  <button
+                    type="button"
+                    className="ghost-button compact-secondary-action"
+                    disabled={!selectedResultRowIds.size}
+                  >
+                    <Replace size={14} />
+                    批量替换
+                  </button>
+                </Popover.Trigger>
+                <Popover.Portal>
+                  <Popover.Content className="batch-replace-menu" align="start" sideOffset={7}>
+                    <div className="batch-replace-title">批量替换文字</div>
+                    <div className="batch-replace-body">
+                      <label className="batch-replace-field">
+                        替换列
+                        <select
+                          value={batchReplaceColumn}
+                          onChange={(e) => setBatchReplaceColumn(e.target.value as keyof ExpenseRecord)}
+                        >
+                          {BATCH_REPLACE_COLUMNS.map((c) => (
+                            <option key={c.key} value={c.key}>{c.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="batch-replace-field">
+                        查找（留空则直接覆写）
+                        <input
+                          type="text"
+                          className="table-cell-input"
+                          placeholder="如：日用百货"
+                          value={batchReplaceFrom}
+                          onChange={(e) => setBatchReplaceFrom(e.target.value)}
+                        />
+                      </label>
+                      <label className="batch-replace-field">
+                        替换为
+                        <input
+                          type="text"
+                          className="table-cell-input"
+                          placeholder="如：交通出行"
+                          value={batchReplaceTo}
+                          onChange={(e) => setBatchReplaceTo(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyBatchReplace(); } }}
+                        />
+                      </label>
+                      <div className="batch-replace-footer">
+                        <span className="batch-replace-hint">
+                          将作用于 {selectedResultRowIds.size} 条已勾选记录
+                        </span>
+                        <button
+                          type="button"
+                          className="primary-button compact"
+                          disabled={!batchReplaceTo && batchReplaceTo !== ''}
+                          onClick={applyBatchReplace}
+                        >
+                          执行替换
+                        </button>
+                      </div>
+                    </div>
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
               <ColumnVisibilityMenu
                 columns={resultColumnOrder}
                 labels={resultColumnLabels}

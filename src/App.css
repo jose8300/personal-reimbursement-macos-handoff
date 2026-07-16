@@ -1387,6 +1387,58 @@ td input.amount-input {
   white-space: nowrap;
 }
 
+.batch-replace-menu {
+  width: 320px;
+  border: 1px solid #cfd7e3;
+  border-radius: 10px;
+  padding: 12px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(0,0,0,.1);
+  z-index: 80;
+}
+
+.batch-replace-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.batch-replace-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.batch-replace-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.batch-replace-field select,
+.batch-replace-field input {
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.batch-replace-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  gap: 8px;
+}
+
+.batch-replace-hint {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
 .row-delete-button {
   min-height: 28px;
   border-color: #f3c0b3;

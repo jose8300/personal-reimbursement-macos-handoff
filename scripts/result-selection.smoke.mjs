@@ -66,19 +66,45 @@ try {
   const total = await page.locator('.result-row-checkbox').count();
   assert(total > 0, `报销结果渲染出 ${total} 行（含行级勾选框）`);
 
-  // 5) 全选
+  // 5) Shift+点击：首行 -> 末行 连续全选（类 Excel 区域选择）
+  await page.locator('.result-row-checkbox').nth(0).click();
+  await page.locator('.result-row-checkbox').nth(total - 1).click({ modifiers: ['Shift'] });
+  await page.waitForTimeout(150);
+  let rc = await page.locator('.result-row-checkbox:checked').count();
+  assert(rc === total, `Shift+点击首末行 -> 连续选中全部 ${rc}/${total}`);
+
+  // 6) Shift+方向键：从首行向下扩展选区
+  await page.getByRole('button', { name: '反选', exact: true }).click();
+  await page.waitForTimeout(120);
+  await page.locator('.result-row-checkbox').nth(0).click();
+  await page.keyboard.press('Shift+ArrowDown');
+  await page.waitForTimeout(120);
+  rc = await page.locator('.result-row-checkbox:checked').count();
+  assert(rc === 2, `Shift+↓ 从首行向下扩展 -> 选中 2 行（实际 ${rc}）`);
+  await page.keyboard.press('Shift+ArrowDown');
+  await page.waitForTimeout(120);
+  rc = await page.locator('.result-row-checkbox:checked').count();
+  assert(rc === 3, `再次 Shift+↓ -> 选中 3 行（实际 ${rc}）`);
+
+  // 7) 普通方向键仅移动焦点、不改选区
+  await page.keyboard.press('ArrowUp');
+  await page.waitForTimeout(120);
+  rc = await page.locator('.result-row-checkbox:checked').count();
+  assert(rc === 3, `普通 ↑ 仅移动焦点、选区保持 3 行（实际 ${rc}）`);
+
+  // 8) 全选
   await page.getByRole('button', { name: '全选', exact: true }).click();
   await page.waitForTimeout(150);
   let checked = await page.locator('.result-row-checkbox:checked').count();
   assert(checked === total, `点击「全选」后 ${checked}/${total} 行被勾选`);
 
-  // 6) 反选
+  // 9) 反选
   await page.getByRole('button', { name: '反选', exact: true }).click();
   await page.waitForTimeout(150);
   checked = await page.locator('.result-row-checkbox:checked').count();
   assert(checked === 0, `点击「反选」后勾选数归零（实际 ${checked}）`);
 
-  // 7) 勾选单行 -> 删除选中 可用
+  // 10) 勾选单行 -> 删除选中 可用
   await page.locator('.result-row-checkbox').first().check();
   await page.waitForTimeout(150);
   checked = await page.locator('.result-row-checkbox:checked').count();
@@ -86,7 +112,7 @@ try {
   const delDisabled = await page.getByRole('button', { name: /删除选中/ }).isDisabled();
   assert(!delDisabled, '勾选后「删除选中」按钮可用');
 
-  // 8) 删除选中 -> 行数减少
+  // 11) 删除选中 -> 行数减少
   await page.getByRole('button', { name: /删除选中/ }).click();
   await page.waitForTimeout(300);
   const after = await page.locator('.result-row-checkbox').count();

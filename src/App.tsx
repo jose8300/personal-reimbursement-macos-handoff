@@ -818,6 +818,8 @@ function App() {
     () => readFormTemplates()[0]?.columns ?? [],
   );
   const [selectedResultRowIds, setSelectedResultRowIds] = useState<Set<string>>(new Set());
+  const [resultSelectionAnchorId, setResultSelectionAnchorId] = useState<string | null>(null);
+  const resultRowShiftKeyRef = useRef(false);
   const [newTemplateName, setNewTemplateName] = useState('');
 
   const [localProgressInfo, setLocalProgressInfo] = useState<LocalProgressDraftInfo | null>(
@@ -1338,8 +1340,8 @@ function App() {
 
   // 报销结果行级选择
   function selectAllResultRows() {
-    const ids = new Set(sortedResultRecords.map((r) => r.id));
-    setSelectedResultRowIds(ids);
+    setSelectedResultRowIds(new Set(sortedResultRecords.map((r) => r.id)));
+    setResultSelectionAnchorId(null);
   }
 
   function invertResultSelection() {
@@ -1349,14 +1351,78 @@ function App() {
       if (!selectedResultRowIds.has(id)) next.add(id);
     }
     setSelectedResultRowIds(next);
+    setResultSelectionAnchorId(null);
   }
 
-  function toggleResultRowSelection(id: string) {
+  // 选中 [fromId, toId] 之间的连续行（含两端），按表格当前顺序
+  function selectResultRange(fromId: string, toId: string) {
+    const order = sortedResultRecords;
+    const fromIdx = order.findIndex((r) => r.id === fromId);
+    const toIdx = order.findIndex((r) => r.id === toId);
+    if (fromIdx < 0 || toIdx < 0) {
+      setSelectedResultRowIds(new Set([toId]));
+      return;
+    }
+    const [lo, hi] = fromIdx <= toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+    const next = new Set<string>();
+    for (let i = lo; i <= hi; i += 1) next.add(order[i].id);
+    setSelectedResultRowIds(next);
+  }
+
+  // 普通点击切换单行；Shift+点击以 anchor 为起点选中连续块（类 Excel 区域选择）
+  function toggleResultRowSelection(id: string, shiftKey = false) {
+    if (shiftKey && resultSelectionAnchorId) {
+      selectResultRange(resultSelectionAnchorId, id);
+      return;
+    }
     setSelectedResultRowIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+    setResultSelectionAnchorId(id);
+  }
+
+  // 将焦点移到相邻行的勾选框（仅导航，不改选区）
+  function focusAdjacentResultCheckbox(id: string, direction: -1 | 1) {
+    const order = sortedResultRecords;
+    const idx = order.findIndex((r) => r.id === id);
+    const nextIdx = Math.min(Math.max(idx + direction, 0), order.length - 1);
+    const nextId = order[nextIdx].id;
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLInputElement>(`input.result-row-checkbox[data-result-row-id="${nextId}"]`)
+        ?.focus();
+    });
+  }
+
+  // Shift+↑/↓：以 anchor 为固定端，沿方向扩展/收缩连续选区
+  function extendResultSelection(activeId: string, direction: -1 | 1) {
+    const order = sortedResultRecords;
+    const activeIdx = order.findIndex((r) => r.id === activeId);
+    if (activeIdx < 0) return;
+    const nextIdx = Math.min(Math.max(activeIdx + direction, 0), order.length - 1);
+    const nextId = order[nextIdx].id;
+    const anchor = resultSelectionAnchorId ?? activeId;
+    selectResultRange(anchor, nextId);
+    setResultSelectionAnchorId(anchor);
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLInputElement>(`input.result-row-checkbox[data-result-row-id="${nextId}"]`)
+        ?.focus();
+    });
+  }
+
+  function handleResultRowKeyDown(id: string, event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (event.shiftKey) extendResultSelection(id, -1);
+      else focusAdjacentResultCheckbox(id, -1);
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (event.shiftKey) extendResultSelection(id, 1);
+      else focusAdjacentResultCheckbox(id, 1);
+    }
   }
 
   function batchRemoveSelectedResults() {
@@ -1369,6 +1435,7 @@ function App() {
       current.map((record) => (ids.includes(record.id) ? { ...record, isCompanyExpense: false } : record)),
     );
     setSelectedResultRowIds(new Set());
+    setResultSelectionAnchorId(null);
     toast.success(`已将 ${ids.length} 条记录移出报销结果`);
   }
 
@@ -2492,10 +2559,12 @@ function App() {
                 ref={(el) => {
                   if (el) el.indeterminate = selectedResultRowIds.size > 0 && selectedResultRowIds.size < sortedResultRecords.length;
                 }}
-                onChange={() => {
-                  if (selectedResultRowIds.size === sortedResultRecords.length) setSelectedResultRowIds(new Set());
-                  else selectAllResultRows();
-                }}
+                  onChange={() => {
+                    if (selectedResultRowIds.size === sortedResultRecords.length) {
+                      setSelectedResultRowIds(new Set());
+                      setResultSelectionAnchorId(null);
+                    } else selectAllResultRows();
+                  }}
               />
               <span>{label}</span>
             </div>
@@ -2539,7 +2608,15 @@ function App() {
               <input
                 type="checkbox"
                 checked={selectedResultRowIds.has(record.id)}
-                onChange={() => toggleResultRowSelection(record.id)}
+                onClick={(event) => {
+                  resultRowShiftKeyRef.current = event.shiftKey;
+                }}
+                onChange={() => {
+                  toggleResultRowSelection(record.id, resultRowShiftKeyRef.current);
+                  resultRowShiftKeyRef.current = false;
+                }}
+                onKeyDown={(event) => handleResultRowKeyDown(record.id, event)}
+                data-result-row-id={record.id}
                 className="result-row-checkbox"
               />
               <button
@@ -3468,7 +3545,10 @@ function App() {
                 {sortedResultRecords.map((record) => (
                   <tr
                     key={record.id}
-                    className={isLegalHolidayDate(record.dateTime) ? 'holiday-row' : ''}
+                    className={[
+                      isLegalHolidayDate(record.dateTime) ? 'holiday-row' : '',
+                      selectedResultRowIds.has(record.id) ? 'selected-row' : '',
+                    ].filter(Boolean).join(' ')}
                   >
                     {visibleResultColumnOrder.map((columnKey) => renderResultCell(columnKey, record))}
                   </tr>

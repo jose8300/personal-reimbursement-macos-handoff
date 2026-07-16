@@ -7,6 +7,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.4.2',
+    date: '2026-07-16',
+    title: '报销结果：行级连续多选（类 Excel 区域选择）',
+    changes: [
+      'Shift+点击：先点首行勾选框、再 Shift+点击末行，一次性选中首尾之间的连续多行',
+      'Shift+↑/↓：勾选框聚焦后，用方向键以锚点为固定端向上/下连续扩展选区（焦点自动跟随，可连续扩选）',
+      '普通 ↑/↓：仅移动焦点、不动选区；选中行高亮（复用 selected-row），键盘操作可见',
+    ],
+  },
+  {
     version: '1.4.1',
     date: '2026-07-16',
     title: '报销结果：金额锁定、批量备注、行级批量操作',

@@ -7,6 +7,14 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.4.4',
+    date: '2026-07-16',
+    title: '报销结果工具栏：显示总行数与选中行数',
+    changes: [
+      '报销结果页标题旁新增行数统计：始终显示「共 N 条」，有勾选时追加「已选中 M 条」',
+    ],
+  },
+  {
     version: '1.4.3',
     date: '2026-07-16',
     title: '消费筛选页：公司消费勾选框连续多选（与报销结果页一致）',

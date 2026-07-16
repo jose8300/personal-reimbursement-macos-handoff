@@ -3468,7 +3468,15 @@ function App() {
       {activeTab === 'result' && (
         <section className="panel">
           <div className="toolbar result-toolbar">
-            <h2>报销结果</h2>
+            <div className="result-toolbar-head">
+              <h2>报销结果</h2>
+              <span className="result-row-count">
+                共 {sortedResultRecords.length} 条
+                {selectedResultRowIds.size > 0 && (
+                  <> · 已选中 {selectedResultRowIds.size} 条</>
+                )}
+              </span>
+            </div>
             <div className="action-row result-toolbar-actions">
               <Popover.Root open={isResultExcludeRuleMenuOpen} onOpenChange={setIsResultExcludeRuleMenuOpen}>
                 <div className="auto-rule-control">

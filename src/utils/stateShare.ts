@@ -95,12 +95,8 @@ export async function shareState(): Promise<'url' | 'code'> {
 // 解析分享码（PR1: 前缀的 gzip+base64 文本），返回本地键映射；非分享码返回 null
 export async function parseSharedCode(raw: string): Promise<Record<string, string | null> | null> {
   const trimmed = raw.trim();
-  let body = trimmed;
-  if (trimmed.startsWith(SHARE_PREFIX)) {
-    body = trimmed.slice(SHARE_PREFIX.length);
-  } else {
-    return null;
-  }
+  if (!trimmed.startsWith(SHARE_PREFIX)) return null;
+  const body = trimmed.slice(SHARE_PREFIX.length);
   try {
     const json = await decompress(body);
     const payload = JSON.parse(json) as Partial<SharePayload>;

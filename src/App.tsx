@@ -35,6 +35,16 @@ import {
   type AutoReimbursementRuleId,
   type CustomAutoRule,
 } from './utils/initialReimbursementSelection';
+import {
+  applyBoundarySuggestion,
+  buildRuleLabelMap,
+  findBoundaryCases,
+  getRecordInsight,
+  previewAutoRuleImpact,
+  suggestRulesFromBehavior,
+  type BoundaryCase,
+  type BehaviorRuleSuggestion,
+} from './utils/selectionInsight';
 import { changelog } from './changelog';
 import { Footer } from './components/Footer';
 import { parseBillFiles } from './utils/parseBills';
@@ -750,6 +760,11 @@ function App() {
   );
   const autoRuleListRef = useRef<HTMLDivElement>(null);
 
+  // 等级二：边界复核展开状态 + 已忽略的边界/建议项
+  const [showBoundaryReview, setShowBoundaryReview] = useState(false);
+  const [dismissedBoundaryIds, setDismissedBoundaryIds] = useState<Set<string>>(new Set());
+  const [dismissedSuggestionKeywords, setDismissedSuggestionKeywords] = useState<Set<string>>(new Set());
+
   const [localProgressInfo, setLocalProgressInfo] = useState<LocalProgressDraftInfo | null>(
     getLocalProgressDraftInfo,
   );
@@ -875,6 +890,66 @@ function App() {
       ) as Record<AutoReimbursementRuleId, number>,
     [filteredRecords, displayRules, customRules],
   );
+
+  // 等级二派生：规则标签映射（供命中理由展示）
+  const ruleLabelMap = useMemo(() => buildRuleLabelMap(customRules), [customRules]);
+
+  // 等级二派生：每条记录的判定洞察（命中理由 + 置信度）
+  const insightById = useMemo(() => {
+    const map: Record<string, ReturnType<typeof getRecordInsight>> = {};
+    for (const record of records) {
+      map[record.id] = getRecordInsight(record, selectedAutoRuleIds, customRules, ruleLabelMap);
+    }
+    return map;
+  }, [records, selectedAutoRuleIds, customRules, ruleLabelMap]);
+
+  // 等级二派生：一键筛入的规则影响面预览
+  const autoRuleImpact = useMemo(
+    () => previewAutoRuleImpact(filteredRecords, selectedAutoRuleIds, customRules),
+    [filteredRecords, selectedAutoRuleIds, customRules],
+  );
+
+  // 等级二派生：边界主动复核候选
+  const boundaryCasesAll = useMemo(
+    () => findBoundaryCases(records, selectedAutoRuleIds, customRules, ruleLabelMap, 20),
+    [records, selectedAutoRuleIds, customRules, ruleLabelMap],
+  );
+  const boundaryCases = useMemo(
+    () => boundaryCasesAll.filter((item) => !dismissedBoundaryIds.has(item.record.id)),
+    [boundaryCasesAll, dismissedBoundaryIds],
+  );
+
+  // 等级二派生：从行为学归纳的候选规则
+  const behaviorSuggestionsAll = useMemo(
+    () => suggestRulesFromBehavior(records, customRules),
+    [records, customRules],
+  );
+  const behaviorSuggestions = useMemo(
+    () => behaviorSuggestionsAll.filter((item) => !dismissedSuggestionKeywords.has(item.keyword)),
+    [behaviorSuggestionsAll, dismissedSuggestionKeywords],
+  );
+
+  function applyBoundaryCase(item: BoundaryCase) {
+    updateRecord(item.record.id, applyBoundarySuggestion(item.record, item.suggestedAction));
+    setDismissedBoundaryIds((prev) => new Set(prev).add(item.record.id));
+  }
+
+  function dismissBoundaryCase(item: BoundaryCase) {
+    setDismissedBoundaryIds((prev) => new Set(prev).add(item.record.id));
+  }
+
+  function saveBehaviorSuggestion(suggestion: BehaviorRuleSuggestion) {
+    const label = suggestion.keyword;
+    const keywords = [suggestion.keyword];
+    const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const rule: CustomAutoRule = { id, label, keywords };
+    const next = [...customRules, rule];
+    setCustomRules(next);
+    writeCustomRules(next);
+    setSelectedAutoRuleIds((prev) => [...prev, id]);
+    setDismissedSuggestionKeywords((prev) => new Set(prev).add(suggestion.keyword));
+    toast.success(`已存为规则：${label}`);
+  }
 
   const reimbursements = useMemo(() => toReimbursementRecords(records), [records]);
   const selectedRecords = records.filter((record) => record.isCompanyExpense);
@@ -1963,7 +2038,9 @@ function App() {
             </button>
           </td>
         );
-      case 'company':
+      case 'company': {
+        const insight = insightById[record.id];
+        const confidence = insight?.confidence;
         return (
           <td key={columnKey} className="company-check-cell">
             <label>
@@ -1974,8 +2051,26 @@ function App() {
                 aria-label="勾选为公司消费"
               />
             </label>
+            {confidence && (
+              <div className="record-insight">
+                <span
+                  className={`confidence-dot confidence-${confidence.level}`}
+                  title={`判定置信度 ${confidence.score}（${confidence.level === 'high' ? '高' : confidence.level === 'medium' ? '中' : '低'}）`}
+                />
+                {insight.autoHits.length > 0 && (
+                  <div className="reason-tags">
+                    {insight.autoHits.slice(0, 2).map((hit) => (
+                      <span key={hit.id} className="reason-tag">{hit.label}</span>
+                    ))}
+                  </div>
+                )}
+                {insight.isManualSelected && <span className="reason-tag manual-tag">人工</span>}
+                {insight.isRuleMissed && <span className="reason-tag missed-tag" title={insight.reason}>建议</span>}
+              </div>
+            )}
           </td>
         );
+      }
       case 'dateTime':
         return (
           <td key={columnKey} className="expense-date-column">
@@ -2374,6 +2469,13 @@ function App() {
                 })
               }
             />
+            <div className="result-reason-line">
+              <span
+                className={`confidence-dot confidence-${(insightById[record.id]?.confidence.level) ?? 'high'}`}
+                title={`判定置信度 ${(insightById[record.id]?.confidence.score) ?? 100}`}
+              />
+              <span className="result-reason-text">{insightById[record.id]?.reason}</span>
+            </div>
           </td>
         );
       case 'amount':
@@ -2684,12 +2786,31 @@ function App() {
             </Popover.Root>
             <button
               type="button"
+              className={showBoundaryReview ? 'ghost-button compact-secondary-action active' : 'ghost-button compact-secondary-action'}
+              disabled={!boundaryCases.length}
+              onClick={() => setShowBoundaryReview((prev) => !prev)}
+              title="挑出最可能误判的记录，请你确认"
+            >
+              边界复核 {boundaryCases.length}
+            </button>
+            <button
+              type="button"
               className="primary-button compact-action"
               disabled={!filteredRecords.length || !selectedAutoRuleIds.length || !autoRuleMatchedCount}
               onClick={applyAutoRulesToFiltered}
+              title={
+                autoRuleImpact.addCount > 0
+                  ? `将新增 ${autoRuleImpact.addCount} 条 · 涉及 ¥${formatCurrency(autoRuleImpact.addAmount)}`
+                  : '当前筛选结果中没有可被规则筛入的记录'
+              }
             >
               一键筛入 {autoRuleMatchedCount}
             </button>
+            {autoRuleImpact.addCount > 0 && (
+              <span className="impact-preview">
+                影响预览：+{autoRuleImpact.addCount} 条 · ¥{formatCurrency(autoRuleImpact.addAmount)}
+              </span>
+            )}
             <ColumnVisibilityMenu
               columns={expenseColumnOrder}
               labels={expenseColumnLabels}
@@ -2770,6 +2891,91 @@ function App() {
               </div>
             </div>
           </div>
+
+          {behaviorSuggestions.length > 0 && (
+            <div className="suggestion-banner">
+              <div className="suggestion-banner-head">
+                <strong>发现候选规则</strong>
+                <span>根据你的勾选习惯归纳，{behaviorSuggestions.length} 个关键词可能值得设为自动筛入规则</span>
+              </div>
+              <ul className="suggestion-list">
+                {behaviorSuggestions.map((suggestion) => (
+                  <li key={suggestion.keyword} className="suggestion-item">
+                    <span className="suggestion-keyword">含「{suggestion.keyword}」</span>
+                    <span className="suggestion-meta">
+                      你在 {suggestion.selectedCount} 条选中记录里用到，未选中里仅 {suggestion.unselectedCount} 条 · 置信度{' '}
+                      {Math.round(suggestion.confidence * 100)}%
+                    </span>
+                    <span className="suggestion-actions">
+                      <button
+                        type="button"
+                        className="primary-button compact"
+                        onClick={() => saveBehaviorSuggestion(suggestion)}
+                      >
+                        存为规则
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost-button compact-secondary-action"
+                        onClick={() =>
+                          setDismissedSuggestionKeywords((prev) => new Set(prev).add(suggestion.keyword))
+                        }
+                      >
+                        忽略
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {showBoundaryReview && boundaryCases.length > 0 && (
+            <div className="boundary-panel">
+              <div className="boundary-panel-head">
+                <strong>边界主动复核</strong>
+                <span>以下 {boundaryCases.length} 条最可能需要你确认（按风险排序），点「采纳」即按建议处理</span>
+              </div>
+              <ul className="boundary-list">
+                {boundaryCases.map((item) => {
+                  const insight = insightById[item.record.id];
+                  return (
+                    <li key={item.record.id} className={`boundary-case boundary-${item.kind}`}>
+                      <span className="boundary-kind" title={item.kind}>
+                        {item.kind === 'missed' ? '可能漏选' : item.kind === 'over-included' ? '可能多选' : '低置信度'}
+                      </span>
+                      <span className="boundary-info">
+                        <span className="boundary-reason">{item.reason}</span>
+                        <span className="boundary-detail">
+                          {item.record.counterparty || item.record.productName || item.record.transactionType || '—'} · ¥
+                          {formatCurrency(item.record.amount)}
+                          {insight && (
+                            <span className={`confidence-dot confidence-${insight.confidence.level}`} title={`置信度 ${insight.confidence.score}`} />
+                          )}
+                        </span>
+                      </span>
+                      <span className="boundary-actions">
+                        <button
+                          type="button"
+                          className="primary-button compact"
+                          onClick={() => applyBoundaryCase(item)}
+                        >
+                          采纳{item.suggestedAction === 'select' ? '勾选' : '移出'}
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost-button compact-secondary-action"
+                          onClick={() => dismissBoundaryCase(item)}
+                        >
+                          忽略
+                        </button>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
 
           <div className="table-wrap table-density-compact">
             <table>

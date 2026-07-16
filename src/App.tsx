@@ -24,7 +24,7 @@ declare const __APP_BUILD_TIME__: string;
 import { holidayRanges } from './config/holidayWindows';
 import type { ExpenseRecord, ParseSummary } from './types/expense';
 import { classifyExpenseRecord, fillMissingClassification } from './utils/classifyExpense';
-import { exportReimbursementsAsCsv, exportReimbursementsAsXlsx, toReimbursementRecords } from './utils/exporters';
+import { exportReimbursementsAsCsv, exportReimbursementsAsXlsx, exportStructuredFormAsXlsx, toReimbursementRecords } from './utils/exporters';
 import { formatCurrency, getDateOnly, getMonth, getWeekdayLabel, normalizeDateInput, parseAmount } from './utils/format';
 import {
   applyAutoReimbursementRules,
@@ -46,6 +46,16 @@ import {
   type BehaviorRuleSuggestion,
 } from './utils/selectionInsight';
 import { changelog } from './changelog';
+import {
+  buildFormModel,
+  defaultFormTemplates,
+  flattenFormRows,
+  FORM_COLUMN_LABELS,
+  FORM_DIM_LABELS,
+  type FormColumnKey,
+  type FormGroupDim,
+  type ReimbursementFormTemplate,
+} from './utils/reimbursementForm';
 import { Footer } from './components/Footer';
 import { parseBillFiles } from './utils/parseBills';
 import {
@@ -235,6 +245,7 @@ const highwayExpenseKeywords = ['高速', '高速公路', '通行费', '过路�
 const localProgressDraftKey = 'personal-reimbursement-progress-v1';
 const localProgressVersionsKey = 'personal-reimbursement-progress-versions-v1';
 const localCustomRulesKey = 'personal-reimbursement-custom-rules-v1';
+const localFormTemplatesKey = 'personal-reimbursement-form-templates-v1';
 const MAX_PROGRESS_VERSIONS = 24;
 const AUTO_SAVE_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -362,8 +373,36 @@ function writeCustomRules(rules: CustomAutoRule[]) {
   }
 }
 
-// 需要随备份一起导出的本地存储键（进度草稿 / 版本历史 / 自定义规则）
-const BACKUP_KEYS = [localProgressDraftKey, localProgressVersionsKey, localCustomRulesKey];
+function readFormTemplates(): ReimbursementFormTemplate[] {
+  if (typeof window === 'undefined') return defaultFormTemplates();
+  const raw = window.localStorage.getItem(localFormTemplatesKey);
+  if (!raw) return defaultFormTemplates();
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return defaultFormTemplates();
+    return (parsed as ReimbursementFormTemplate[]).filter(
+      (t) => t.id && t.name && Array.isArray(t.groupBy) && Array.isArray(t.columns),
+    );
+  } catch {
+    return defaultFormTemplates();
+  }
+}
+
+function writeFormTemplates(templates: ReimbursementFormTemplate[]) {
+  try {
+    window.localStorage.setItem(localFormTemplatesKey, JSON.stringify(templates));
+  } catch {
+    // 静默忽略
+  }
+}
+
+// 需要随备份一起导出的本地存储键（进度草稿 / 版本历史 / 自定义规则 / 结构化报销单模板）
+const BACKUP_KEYS = [
+  localProgressDraftKey,
+  localProgressVersionsKey,
+  localCustomRulesKey,
+  localFormTemplatesKey,
+];
 
 // 跨源迁移：把当前源的本地进度导出为 JSON 文件，并尝复制到剪贴板兜底
 function exportLocalBackup() {
@@ -765,6 +804,20 @@ function App() {
   const [dismissedBoundaryIds, setDismissedBoundaryIds] = useState<Set<string>>(new Set());
   const [dismissedSuggestionKeywords, setDismissedSuggestionKeywords] = useState<Set<string>>(new Set());
 
+  // 等级三①：结构化报销单
+  const [showFormBuilder, setShowFormBuilder] = useState(false);
+  const [formTemplates, setFormTemplates] = useState<ReimbursementFormTemplate[]>(readFormTemplates);
+  const [activeTemplateId, setActiveTemplateId] = useState<string>(
+    () => readFormTemplates()[0]?.id ?? '',
+  );
+  const [formGroupBy, setFormGroupBy] = useState<FormGroupDim[]>(
+    () => readFormTemplates()[0]?.groupBy ?? [],
+  );
+  const [formColumns, setFormColumns] = useState<FormColumnKey[]>(
+    () => readFormTemplates()[0]?.columns ?? [],
+  );
+  const [newTemplateName, setNewTemplateName] = useState('');
+
   const [localProgressInfo, setLocalProgressInfo] = useState<LocalProgressDraftInfo | null>(
     getLocalProgressDraftInfo,
   );
@@ -952,6 +1005,21 @@ function App() {
   }
 
   const reimbursements = useMemo(() => toReimbursementRecords(records), [records]);
+
+  // 等级三①：结构化报销单模型（由当前可报销记录 + 选中模板派生）
+  const activeTemplate = useMemo(
+    () => formTemplates.find((t) => t.id === activeTemplateId) ?? formTemplates[0],
+    [formTemplates, activeTemplateId],
+  );
+  const formModel = useMemo(
+    () =>
+      buildFormModel(reimbursements, {
+        ...(activeTemplate ?? defaultFormTemplates()[0]),
+        groupBy: formGroupBy,
+        columns: formColumns,
+      }),
+    [reimbursements, activeTemplate, formGroupBy, formColumns],
+  );
   const selectedRecords = records.filter((record) => record.isCompanyExpense);
   const filteredSelectedRecords = useMemo(
     () =>
@@ -1710,6 +1778,86 @@ function App() {
   function exportReimbursementsToCsv() {
     exportReimbursementsAsCsv(reimbursements);
     toast.success(`已导出 CSV：${reimbursements.length} 条`);
+  }
+
+  // 等级三①：结构化报销单
+  function openFormBuilder() {
+    if (!reimbursements.length) {
+      toast.error('暂无可报销记录，请先勾选或一键筛入公司消费');
+      return;
+    }
+    setShowFormBuilder(true);
+  }
+
+  function applyFormTemplate(templateId: string) {
+    const template = formTemplates.find((t) => t.id === templateId);
+    if (!template) return;
+    setActiveTemplateId(template.id);
+    setFormGroupBy([...template.groupBy]);
+    setFormColumns([...template.columns]);
+  }
+
+  function toggleFormDim(dim: FormGroupDim) {
+    setFormGroupBy((current) =>
+      current.includes(dim) ? current.filter((d) => d !== dim) : [...current, dim],
+    );
+  }
+
+  function toggleFormColumn(key: FormColumnKey) {
+    setFormColumns((current) =>
+      current.includes(key) ? current.filter((c) => c !== key) : [...current, key],
+    );
+  }
+
+  function saveCurrentAsTemplate() {
+    const name = newTemplateName.trim();
+    if (!name) {
+      toast.error('请填写模板名称');
+      return;
+    }
+    const template: ReimbursementFormTemplate = {
+      id: `custom-${Date.now()}`,
+      name,
+      groupBy: [...formGroupBy],
+      columns: [...formColumns],
+      title: name,
+    };
+    const next = [...formTemplates, template];
+    setFormTemplates(next);
+    writeFormTemplates(next);
+    setActiveTemplateId(template.id);
+    setNewTemplateName('');
+    toast.success(`已保存模板「${name}」`);
+  }
+
+  function deleteFormTemplate(templateId: string) {
+    if (formTemplates.length <= 1) {
+      toast.error('至少保留一个模板');
+      return;
+    }
+    const next = formTemplates.filter((t) => t.id !== templateId);
+    setFormTemplates(next);
+    writeFormTemplates(next);
+    if (activeTemplateId === templateId) {
+      setActiveTemplateId(next[0].id);
+      setFormGroupBy([...next[0].groupBy]);
+      setFormColumns([...next[0].columns]);
+    }
+    toast.success('已删除模板');
+  }
+
+  function exportStructuredForm() {
+    if (!reimbursements.length) {
+      toast.error('暂无可报销记录');
+      return;
+    }
+    exportStructuredFormAsXlsx(formModel, formColumns);
+    toast.success(`已导出结构化报销单：${formModel.totalCount} 条`);
+  }
+
+  function printStructuredForm() {
+    if (typeof window === 'undefined') return;
+    window.print();
   }
 
   function toggleExpenseColumnVisibility(columnKey: ExpenseColumnKey) {
@@ -3107,6 +3255,15 @@ function App() {
               <button
                 type="button"
                 className="ghost-button result-toolbar-button"
+                disabled={!reimbursements.length}
+                onClick={openFormBuilder}
+                title="按维度分组生成结构化报销单，可保存模板并导出"
+              >
+                结构化报销单
+              </button>
+              <button
+                type="button"
+                className="ghost-button result-toolbar-button"
                 disabled={!selectedRecords.length}
                 onClick={classifySelectedReimbursements}
               >
@@ -3263,6 +3420,133 @@ function App() {
                 </ul>
               </section>
             ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {showFormBuilder && (
+      <div className="changelog-overlay form-builder-overlay" onClick={() => setShowFormBuilder(false)}>
+        <div className="changelog-modal form-builder-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="changelog-header">
+            <h2>结构化报销单</h2>
+            <button type="button" className="changelog-close" onClick={() => setShowFormBuilder(false)}>
+              ✕
+            </button>
+          </div>
+          <div className="form-builder-body">
+            <div className="form-template-bar">
+              <label className="form-field">
+                <span>模板</span>
+                <select value={activeTemplateId} onChange={(event) => applyFormTemplate(event.target.value)}>
+                  {formTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="ghost-button compact"
+                onClick={() => deleteFormTemplate(activeTemplateId)}
+                disabled={formTemplates.length <= 1}
+              >
+                删除模板
+              </button>
+              <span className="form-template-save">
+                <input
+                  type="text"
+                  placeholder="模板名称"
+                  value={newTemplateName}
+                  onChange={(event) => setNewTemplateName(event.target.value)}
+                />
+                <button type="button" className="primary-button compact" onClick={saveCurrentAsTemplate}>
+                  另存为模板
+                </button>
+              </span>
+            </div>
+
+            <div className="form-picker-group">
+              <div className="form-picker">
+                <strong>分组维度（勾选即层级顺序）</strong>
+                <div className="form-chip-row">
+                  {(Object.keys(FORM_DIM_LABELS) as FormGroupDim[]).map((dim) => (
+                    <label key={dim} className={formGroupBy.includes(dim) ? 'form-chip active' : 'form-chip'}>
+                      <input type="checkbox" checked={formGroupBy.includes(dim)} onChange={() => toggleFormDim(dim)} />
+                      {FORM_DIM_LABELS[dim]}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="form-picker">
+                <strong>明细列</strong>
+                <div className="form-chip-row">
+                  {(Object.keys(FORM_COLUMN_LABELS) as FormColumnKey[]).map((key) => (
+                    <label key={key} className={formColumns.includes(key) ? 'form-chip active' : 'form-chip'}>
+                      <input type="checkbox" checked={formColumns.includes(key)} onChange={() => toggleFormColumn(key)} />
+                      {FORM_COLUMN_LABELS[key]}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="form-preview" id="form-preview-area">
+              <div className="form-preview-title">{formModel.title}</div>
+              <div className="form-preview-meta">
+                合计 ¥{formatCurrency(formModel.totalAmount)} · 共 {formModel.totalCount} 条
+              </div>
+              {flattenFormRows(formModel, formColumns).map((row, index) => {
+                if (row.kind === 'title') return null;
+                if (row.kind === 'group') {
+                  return (
+                    <div key={index} className="form-group-head" style={{ marginLeft: row.depth * 16 }}>
+                      {row.dim ? FORM_DIM_LABELS[row.dim] : '全部'}：{row.value}
+                      <span className="form-group-amount">
+                        （{row.count} 条 · ¥{formatCurrency(row.amount)}）
+                      </span>
+                    </div>
+                  );
+                }
+                if (row.kind === 'detail') {
+                  return (
+                    <div key={index} className="form-detail-row" style={{ marginLeft: row.depth * 16 }}>
+                      {row.cells.map((cell) => (
+                        <span key={cell.key} className={cell.key === 'amount' ? 'form-cell amount' : 'form-cell'}>
+                          <em>{cell.label}</em>
+                          {cell.key === 'amount' ? formatCurrency(Number(cell.value)) : cell.value}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                }
+                if (row.kind === 'subtotal') {
+                  return (
+                    <div key={index} className="form-subtotal" style={{ marginLeft: row.depth * 16 }}>
+                      小计（{row.count} 条） · ¥{formatCurrency(row.amount)}
+                    </div>
+                  );
+                }
+                return (
+                  <div key={index} className="form-grandtotal">
+                    合计 · ¥{formatCurrency(row.amount)}（{row.count} 条）
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="form-builder-footer">
+            <button type="button" className="ghost-button" onClick={() => setShowFormBuilder(false)}>
+              关闭
+            </button>
+            <button type="button" className="ghost-button" onClick={printStructuredForm}>
+              打印 / 导出 PDF
+            </button>
+            <button type="button" className="primary-button" onClick={exportStructuredForm}>
+              导出 Excel（结构化）
+            </button>
           </div>
         </div>
       </div>

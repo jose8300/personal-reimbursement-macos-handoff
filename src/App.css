@@ -2110,3 +2110,205 @@ td input.amount-input {
 .result-reason-line .confidence-dot {
   flex: 0 0 auto;
 }
+
+/* 等级三①：结构化报销单 */
+.form-builder-modal {
+  width: min(900px, calc(100vw - 32px));
+  max-height: 88vh;
+}
+
+.form-builder-body {
+  padding: 16px 20px 8px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-template-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #475467;
+}
+
+.form-field select {
+  padding: 6px 8px;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.form-template-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.form-template-save input {
+  padding: 6px 8px;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  font-size: 13px;
+  width: 130px;
+}
+
+.form-picker-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-picker strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #344054;
+}
+
+.form-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.form-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 999px;
+  font-size: 13px;
+  color: #475467;
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-chip.active {
+  border-color: #2f6fed;
+  background: #eaf1fe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.form-chip input {
+  accent-color: #2f6fed;
+}
+
+.form-preview {
+  border: 1px solid #eef1f6;
+  border-radius: 10px;
+  background: #fbfcfe;
+  padding: 14px 16px;
+  max-height: 340px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+
+.form-preview-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #172033;
+  text-align: center;
+}
+
+.form-preview-meta {
+  text-align: center;
+  color: #667085;
+  margin: 4px 0 12px;
+}
+
+.form-group-head {
+  margin-top: 10px;
+  font-weight: 700;
+  color: #172033;
+  padding: 4px 0;
+  border-bottom: 1px dashed #e4e8ef;
+}
+
+.form-group-amount {
+  font-weight: 500;
+  color: #667085;
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.form-detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 3px 0;
+  color: #344054;
+}
+
+.form-cell {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.form-cell em {
+  font-style: normal;
+  color: #98a2b3;
+}
+
+.form-cell.amount {
+  font-weight: 600;
+  color: #1d4ed8;
+}
+
+.form-subtotal {
+  margin-top: 4px;
+  padding-top: 4px;
+  font-weight: 600;
+  color: #344054;
+  border-top: 1px solid #eef1f6;
+}
+
+.form-grandtotal {
+  margin-top: 10px;
+  padding: 8px 0;
+  font-weight: 700;
+  font-size: 14px;
+  color: #172033;
+  text-align: right;
+  background: #eef4fc;
+  border-radius: 6px;
+}
+
+.form-builder-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 20px;
+  border-top: 1px solid #eef1f6;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .form-preview,
+  .form-preview * {
+    visibility: visible;
+  }
+  .form-preview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none;
+    background: #fff;
+    max-height: none;
+  }
+}

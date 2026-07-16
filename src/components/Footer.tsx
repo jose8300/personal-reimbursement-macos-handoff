@@ -8,6 +8,8 @@ export function Footer({
   onImportFile,
   onImportFromClipboard,
   onShareProgress,
+  onExportEncrypted,
+  onImportEncryptedFile,
 }: {
   version: string;
   buildTime: string;
@@ -16,8 +18,11 @@ export function Footer({
   onImportFile: (file: File) => void;
   onImportFromClipboard: (text: string) => void;
   onShareProgress: () => void;
+  onExportEncrypted: () => void;
+  onImportEncryptedFile: (file: File) => void;
 }) {
   const importInputRef = useRef<HTMLInputElement>(null);
+  const importEncInputRef = useRef<HTMLInputElement>(null);
   return (
     <footer className="app-footer">
       <span>版本 v{version}</span>
@@ -34,6 +39,27 @@ export function Footer({
       <button type="button" className="footer-link" onClick={onShareProgress}>
         分享进度
       </button>
+      <button type="button" className="footer-link" onClick={onExportEncrypted}>
+        加密备份
+      </button>
+      <button
+        type="button"
+        className="footer-link"
+        onClick={() => importEncInputRef.current?.click()}
+      >
+        恢复加密
+      </button>
+      <input
+        ref={importEncInputRef}
+        type="file"
+        accept="application/json,.json"
+        style={{ display: 'none' }}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) onImportEncryptedFile(file);
+          event.target.value = '';
+        }}
+      />
       <button
         type="button"
         className="footer-link"

@@ -53,16 +53,21 @@ async function decompress(b64: string): Promise<string> {
   return await new Response(stream).text();
 }
 
-function buildPayload(): SharePayload {
+// 收集本地 3 个键，供分享与加密备份复用
+export function collectLocalData(): Record<string, string | null> {
   const data: Record<string, string | null> = {};
   for (const k of SHARE_KEYS) {
     data[k] = typeof window !== 'undefined' ? window.localStorage.getItem(k) : null;
   }
+  return data;
+}
+
+function buildPayload(): SharePayload {
   return {
     app: 'personal-reimbursement',
     schema: 1,
     exportedAt: new Date().toISOString(),
-    data,
+    data: collectLocalData(),
   };
 }
 

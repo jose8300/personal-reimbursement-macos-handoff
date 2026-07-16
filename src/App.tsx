@@ -15,7 +15,8 @@ import {
   Upload,
 } from 'lucide-react';
 import './App.css';
-import { shareState, parseSharedCode, getStateFromHash, clearStateHash } from './utils/stateShare';
+import { shareState, parseSharedCode, getStateFromHash, clearStateHash, collectLocalData } from './utils/stateShare';
+import { encryptBackup, decryptBackup, downloadText } from './utils/encryptedBackup';
 
 // 由 vite.config.ts 的 define 在构建时注入（版本号与构建时间）
 declare const __APP_VERSION__: string;
@@ -455,6 +456,33 @@ async function shareProgress() {
   } else {
     toast.success('进度已压缩为分享码并复制，粘贴到新设备「导入备份」即可恢复');
   }
+}
+
+// 加密备份：口令加密后导出文件（无口令无法打开）
+async function exportEncrypted() {
+  const pwd = window.prompt('设置加密口令（恢复时必须输入，请牢记）：');
+  if (!pwd) return;
+  const data = collectLocalData();
+  const payload = await encryptBackup(data, pwd);
+  downloadText(`报销进度加密备份-${new Date().toISOString().slice(0, 10)}.json`, payload);
+  toast.success('已导出加密备份文件，请妥善保管（无口令无法打开）');
+}
+
+// 加密备份恢复：选文件 + 口令解密
+async function importEncryptedFile(file: File) {
+  const text = await file.text();
+  if (!text.trimStart().startsWith('ENC1:')) {
+    toast.error('这不是加密备份文件');
+    return;
+  }
+  const pwd = window.prompt('输入加密口令：');
+  if (!pwd) return;
+  const data = await decryptBackup(text, pwd);
+  if (!data) {
+    toast.error('口令错误或备份已损坏');
+    return;
+  }
+  await applySharedData(data);
 }
 
 function createProgressVersion(kind: ProgressVersion['kind'], recordCount: number, selectedCount: number): ProgressVersion {
@@ -2994,6 +3022,8 @@ function App() {
       onImportFile={importLocalBackup}
       onImportFromClipboard={importFromClipboard}
       onShareProgress={shareProgress}
+      onExportEncrypted={exportEncrypted}
+      onImportEncryptedFile={importEncryptedFile}
     />
     <div className="page-scroll-buttons">
       <button type="button" title="回到顶部" onClick={() => window.scrollTo({ top: 0 })}>

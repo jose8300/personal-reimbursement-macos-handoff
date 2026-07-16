@@ -7,6 +7,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.2.7',
+    date: '2026-07-15',
+    title: '加密备份（端到端加密）',
+    changes: [
+      '页脚新增「加密备份」：用口令（AES-GCM + PBKDF2）加密全量进度并导出文件',
+      '新增「恢复加密」：选加密文件 + 输入口令即可解密恢复',
+      '备份文件无口令无法打开，设备丢失/清缓存也可凭文件与口令恢复',
+    ],
+  },
+  {
     version: '1.2.6',
     date: '2026-07-15',
     title: '进度可分享化',

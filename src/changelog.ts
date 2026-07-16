@@ -7,6 +7,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.4.3',
+    date: '2026-07-16',
+    title: '消费筛选页：公司消费勾选框连续多选（与报销结果页一致）',
+    changes: [
+      '消费筛选页「公司」列勾选框复用行级连续多选：Shift+点击首尾行，将中间连续块统一标记为「公司消费」',
+      'Shift+↑/↓：以锚点为固定端向上/下连续扩展/取消「公司消费」标记（焦点自动跟随，可连按）',
+      '「公司」列表头新增全选/反选勾选框（含半选 indeterminate 态），与报销结果页交互一致',
+    ],
+  },
+  {
     version: '1.4.2',
     date: '2026-07-16',
     title: '报销结果：行级连续多选（类 Excel 区域选择）',

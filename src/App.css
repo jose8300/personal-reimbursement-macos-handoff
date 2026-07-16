@@ -1368,6 +1368,12 @@ td input.amount-input {
   border-radius: 3px;
 }
 
+.company-check-box-input:focus-visible {
+  outline: 2px solid #2f6bff;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
 .row-delete-button {
   min-height: 28px;
   border-color: #f3c0b3;

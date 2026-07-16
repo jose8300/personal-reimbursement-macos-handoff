@@ -1439,6 +1439,81 @@ function App() {
     toast.success(`已将 ${ids.length} 条记录移出报销结果`);
   }
 
+  // 消费筛选页：公司消费勾选框支持连续多选（与报销结果页交互一致）
+  const [filterSelectionAnchorId, setFilterSelectionAnchorId] = useState<string | null>(null);
+  const filterRowShiftKeyRef = useRef(false);
+
+  // 将 [fromId, toId] 之间的可见行统一设为某「公司消费」状态（类 Excel 区域填充）
+  function paintCompanyExpenseRange(fromId: string, toId: string, value: boolean) {
+    const order = displayExpenseRecords;
+    const fromIdx = order.findIndex((r) => r.id === fromId);
+    const toIdx = order.findIndex((r) => r.id === toId);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const [lo, hi] = fromIdx <= toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+    const ids = new Set<string>();
+    for (let i = lo; i <= hi; i += 1) ids.add(order[i].id);
+    setRecords((current) =>
+      current.map((record) => (ids.has(record.id) ? { ...record, isCompanyExpense: value } : record)),
+    );
+  }
+
+  // 普通点击切换单行；Shift+点击以 anchor 为起点，将连续块填充为 anchor 的「公司消费」状态
+  function toggleCompanyExpenseSelection(id: string, shiftKey = false) {
+    if (shiftKey && filterSelectionAnchorId) {
+      const anchorRec = displayExpenseRecords.find((r) => r.id === filterSelectionAnchorId);
+      const value = anchorRec ? anchorRec.isCompanyExpense : true;
+      paintCompanyExpenseRange(filterSelectionAnchorId, id, value);
+      return;
+    }
+    setRecords((current) =>
+      current.map((record) => (record.id === id ? { ...record, isCompanyExpense: !record.isCompanyExpense } : record)),
+    );
+    setFilterSelectionAnchorId(id);
+  }
+
+  function focusAdjacentFilterCheckbox(id: string, direction: -1 | 1) {
+    const order = displayExpenseRecords;
+    const idx = order.findIndex((r) => r.id === id);
+    const nextIdx = Math.min(Math.max(idx + direction, 0), order.length - 1);
+    const nextId = order[nextIdx].id;
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLInputElement>(`input.company-check-box-input[data-filter-row-id="${nextId}"]`)
+        ?.focus();
+    });
+  }
+
+  // Shift+↑/↓：以 anchor 为固定端，沿方向扩展/收缩连续块的「公司消费」状态
+  function extendFilterSelection(activeId: string, direction: -1 | 1) {
+    const order = displayExpenseRecords;
+    const activeIdx = order.findIndex((r) => r.id === activeId);
+    if (activeIdx < 0) return;
+    const nextIdx = Math.min(Math.max(activeIdx + direction, 0), order.length - 1);
+    const nextId = order[nextIdx].id;
+    const anchor = filterSelectionAnchorId ?? activeId;
+    const anchorRec = order.find((r) => r.id === anchor);
+    const value = anchorRec ? anchorRec.isCompanyExpense : true;
+    paintCompanyExpenseRange(anchor, nextId, value);
+    setFilterSelectionAnchorId(anchor);
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLInputElement>(`input.company-check-box-input[data-filter-row-id="${nextId}"]`)
+        ?.focus();
+    });
+  }
+
+  function handleFilterRowKeyDown(id: string, event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (event.shiftKey) extendFilterSelection(id, -1);
+      else focusAdjacentFilterCheckbox(id, -1);
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (event.shiftKey) extendFilterSelection(id, 1);
+      else focusAdjacentFilterCheckbox(id, 1);
+    }
+  }
+
   function shouldIgnoreRowClick(target: EventTarget | null) {
     if (!(target instanceof Element)) return false;
     return Boolean(
@@ -2121,8 +2196,40 @@ function App() {
     switch (columnKey) {
       case 'actions':
         return renderStaticHeader(columnKey, '操作');
-      case 'company':
-        return renderStaticHeader(columnKey, '公司');
+      case 'company': {
+        const allChecked = filteredRecords.length > 0 && filteredRecords.every((r) => r.isCompanyExpense);
+        const someChecked = filteredRecords.some((r) => r.isCompanyExpense);
+        return (
+          <th
+            key={columnKey}
+            data-column-key={columnKey}
+            className={[
+              'sortable-th',
+              draggedColumnKey === columnKey ? 'dragging' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            {...getSortableHeaderProps(columnKey)}
+          >
+            <div className="th-filter-label">
+              <input
+                type="checkbox"
+                checked={allChecked}
+                ref={(el) => {
+                  if (el) el.indeterminate = someChecked && !allChecked;
+                }}
+                onClick={(event) => event.stopPropagation()}
+                onChange={() => {
+                  if (allChecked) setCompanyExpenseForFiltered(false);
+                  else setCompanyExpenseForFiltered(true);
+                  setFilterSelectionAnchorId(null);
+                }}
+              />
+              <span>公司</span>
+            </div>
+          </th>
+        );
+      }
       case 'dateTime':
         return (
           <FilterHeader
@@ -2317,8 +2424,17 @@ function App() {
             <label>
               <input
                 type="checkbox"
+                className="company-check-box-input"
                 checked={record.isCompanyExpense}
-                onChange={(event) => updateRecord(record.id, { isCompanyExpense: event.target.checked })}
+                onClick={(event) => {
+                  filterRowShiftKeyRef.current = event.shiftKey;
+                }}
+                onChange={() => {
+                  toggleCompanyExpenseSelection(record.id, filterRowShiftKeyRef.current);
+                  filterRowShiftKeyRef.current = false;
+                }}
+                onKeyDown={(event) => handleFilterRowKeyDown(record.id, event)}
+                data-filter-row-id={record.id}
                 aria-label="勾选为公司消费"
               />
             </label>

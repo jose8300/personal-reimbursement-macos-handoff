@@ -55,8 +55,31 @@ try {
   const expenseRows = await page.locator('.expense-row').count();
   assert(expenseRows > 0, `上传并解析出 ${expenseRows} 条消费记录`);
 
-  // 3) 进入消费筛选，全选标记为公司消费
+  // 3) 进入消费筛选，验证公司消费勾选框的连续多选
   await page.getByRole('button', { name: '消费筛选' }).click();
+  await page.waitForSelector('.company-check-box-input', { timeout: 10000 });
+  const filterChecks = page.locator('.company-check-box-input');
+  const checkedCount = () => page.locator('input.company-check-box-input:checked').count();
+  const fTotal = await filterChecks.count();
+  assert(fTotal > 0, `消费筛选渲染出 ${fTotal} 个公司消费勾选框`);
+
+  // 3a) 初始应全未勾选；Shift+点击首末行连续标记为「公司消费」
+  let fChecked = await checkedCount();
+  assert(fChecked === 0, `上传后初始 ${fChecked} 条被标记为公司消费`);
+  await filterChecks.nth(0).click();
+  await filterChecks.nth(fTotal - 1).click({ modifiers: ['Shift'] });
+  await page.waitForTimeout(150);
+  fChecked = await checkedCount();
+  assert(fChecked === fTotal, `Shift+点击首末行 -> 连续标记 ${fChecked}/${fTotal} 条为公司消费`);
+
+  // 3b) Shift+↑ 从末行向上取消连续块
+  await filterChecks.nth(fTotal - 1).click();
+  await page.keyboard.press('Shift+ArrowUp');
+  await page.waitForTimeout(150);
+  fChecked = await checkedCount();
+  assert(fChecked === fTotal - 2, `Shift+↑ 从末行向上取消 2 行 -> 剩 ${fChecked} 条（预期 ${fTotal - 2}）`);
+
+  // 3c) 全选标记为公司消费（供后续报销结果测试）
   await page.getByRole('button', { name: '全选', exact: true }).click();
   await page.waitForTimeout(300);
 

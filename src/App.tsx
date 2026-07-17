@@ -1136,7 +1136,6 @@ function App() {
       if (data) await applySharedData(data, true);
     })();
     // 仅挂载时执行一次
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -3718,6 +3717,15 @@ function App() {
                   </Popover.Content>
                 </Popover.Portal>
               </Popover.Root>
+              <label className="ghost-button result-toolbar-button" title="导入报销结果（Excel/CSV）">
+                <Upload size={17} /> 导入
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  multiple
+                  onChange={(event) => handleReimbursementFiles(event.target.files)}
+                />
+              </label>
               <button
                 type="button"
                 className="ghost-button compact-secondary-action"

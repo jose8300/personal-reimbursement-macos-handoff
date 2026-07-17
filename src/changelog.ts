@@ -7,6 +7,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.4.6',
+    date: '2026-07-17',
+    title: '报销结果工具栏新增「导入」按钮',
+    changes: [
+      '报销结果页工具栏新增「导入」按钮：可直接从该页导入 Excel/CSV 报销结果文件，无需先回到上传页',
+      '复用既有导入逻辑（handleReimbursementFiles），支持 .xlsx/.xls/.csv 多选，导入后自动并入当前结果并 toast 提示',
+      '隐藏 file input 以透明覆盖形式嵌入按钮，样式与其他工具栏按钮一致',
+    ],
+  },
+  {
     version: '1.4.5',
     date: '2026-07-16',
     title: '批量文字替换（类 Excel 查找替换）',

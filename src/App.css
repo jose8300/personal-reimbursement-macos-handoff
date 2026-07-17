@@ -1439,6 +1439,19 @@ td input.amount-input {
   color: #9ca3af;
 }
 
+/* 导入按钮（label 包裹隐藏 file input） */
+.result-toolbar-button[title^="导入"] {
+  position: relative;
+  cursor: pointer;
+}
+
+.result-toolbar-button[title^="导入"] input[type=file] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .row-delete-button {
   min-height: 28px;
   border-color: #f3c0b3;

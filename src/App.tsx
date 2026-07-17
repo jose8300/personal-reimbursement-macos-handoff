@@ -11,7 +11,9 @@ import {
   Download,
   Filter,
   FileSpreadsheet,
+  Redo2,
   Replace,
+  Undo2,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -836,6 +838,112 @@ function App() {
   const [progressVersions, setProgressVersions] = useState<ProgressVersion[]>(readProgressVersions);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showOnlySelected, setShowOnlySelected] = useState(false);
+
+  // ---- 撤销 / 重做（支持多步） ----
+  // 快照仅覆盖核心数据（records + 报销结果筛除历史），其余 UI 偏好不纳入撤销范围
+  const MAX_UNDO_STEPS = 50;
+  type HistorySnapshot = {
+    label: string;
+    records: ExpenseRecord[];
+    resultExcludeHistory: Record<ResultExcludeRuleId, string[][]>;
+    ts: number;
+    coalesceKey?: string;
+  };
+  const recordsRef = useRef(records);
+  recordsRef.current = records;
+  const resultExcludeHistoryRef = useRef(resultExcludeHistory);
+  resultExcludeHistoryRef.current = resultExcludeHistory;
+  const [undoStack, setUndoStack] = useState<HistorySnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<HistorySnapshot[]>([]);
+  const undoStackRef = useRef(undoStack);
+  undoStackRef.current = undoStack;
+  const redoStackRef = useRef(redoStack);
+  redoStackRef.current = redoStack;
+
+  // 在某次「用户数据操作」开始前调用：把当前 records/筛除历史压入撤销栈。
+  // coalesceKey 相同且间隔 < 1.2s 的连续调用会合并为同一步（用于单元格连续输入），
+  // 合并时保留首次快照（即操作前的状态），撤销可整体回退。
+  function pushHistory(label: string, coalesceKey?: string) {
+    const snapshot = {
+      records: structuredClone(recordsRef.current),
+      resultExcludeHistory: structuredClone(resultExcludeHistoryRef.current),
+    };
+    setUndoStack((stack) => {
+      const now = Date.now();
+      if (coalesceKey && stack.length) {
+        const top = stack[stack.length - 1];
+        if (top.coalesceKey === coalesceKey && now - top.ts < 1200) {
+          const nextStack = stack.slice();
+          nextStack[nextStack.length - 1] = { ...top, ts: now };
+          return nextStack;
+        }
+      }
+      const entry: HistorySnapshot = { label, ...snapshot, ts: now, coalesceKey };
+      return [...stack, entry].slice(-MAX_UNDO_STEPS);
+    });
+    setRedoStack([]);
+  }
+
+  function clearUndoableSelections() {
+    setSelectedResultRowIds(new Set());
+    setResultSelectionAnchorId(null);
+    setFilterSelectionAnchorId(null);
+  }
+
+  function undo() {
+    const stack = undoStackRef.current;
+    if (!stack.length) return;
+    const entry = stack[stack.length - 1];
+    const current: HistorySnapshot = {
+      label: entry.label,
+      records: structuredClone(recordsRef.current),
+      resultExcludeHistory: structuredClone(resultExcludeHistoryRef.current),
+      ts: Date.now(),
+    };
+    setRecords(entry.records);
+    setResultExcludeHistory(entry.resultExcludeHistory);
+    setUndoStack(stack.slice(0, -1));
+    setRedoStack((rs) => [...rs, current].slice(-MAX_UNDO_STEPS));
+    clearUndoableSelections();
+  }
+
+  function redo() {
+    const stack = redoStackRef.current;
+    if (!stack.length) return;
+    const entry = stack[stack.length - 1];
+    const current: HistorySnapshot = {
+      label: entry.label,
+      records: structuredClone(recordsRef.current),
+      resultExcludeHistory: structuredClone(resultExcludeHistoryRef.current),
+      ts: Date.now(),
+    };
+    setRecords(entry.records);
+    setResultExcludeHistory(entry.resultExcludeHistory);
+    setRedoStack(stack.slice(0, -1));
+    setUndoStack((us) => [...us, current].slice(-MAX_UNDO_STEPS));
+    clearUndoableSelections();
+  }
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const key = e.key.toLowerCase();
+      if (key !== 'z' && key !== 'y') return;
+      const el = document.activeElement as HTMLElement | null;
+      const inEditable =
+        !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+      // 输入框内的普通 Ctrl/Cmd+Z 交给浏览器原生文本撤销，避免打断输入
+      if (inEditable && key === 'z' && !e.shiftKey) return;
+      e.preventDefault();
+      if (key === 'y' || (key === 'z' && e.shiftKey)) redo();
+      else undo();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // undo/redo 只读 ref，逻辑稳定，只需在挂载时绑定一次键盘监听
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const visibleExpenseColumnOrder = useMemo(
     () => expenseColumnOrder.filter((columnKey) => !hiddenExpenseColumnKeys.includes(columnKey)),
     [expenseColumnOrder, hiddenExpenseColumnKeys],
@@ -1176,6 +1284,7 @@ function App() {
     setIsParsing(true);
     try {
       const result = await parseReimbursementResultFiles(files);
+      pushHistory('导入报销结果');
       setResultExcludeHistory(createEmptyResultExcludeHistory());
       setRecords((current) => mergeReimbursementRecords(current, result.records.map(fillMissingClassification)));
       setSummaries((current) => [...current, ...result.summaries]);
@@ -1192,6 +1301,7 @@ function App() {
     setIsParsing(true);
     try {
       const result = await parseBillFiles(files);
+      pushHistory('导入账单');
       setResultExcludeHistory(createEmptyResultExcludeHistory());
       setRecords((current) => [...current, ...result.records]);
       setSummaries((current) => [...current, ...result.summaries]);
@@ -1244,6 +1354,7 @@ function App() {
   }
 
   function updateRecord(id: string, patch: Partial<ExpenseRecord>) {
+    pushHistory('编辑记录', `edit:${id}:${Object.keys(patch).sort().join('+')}`);
     setRecords((current) =>
       current.map((record) => (record.id === id ? { ...record, ...patch } : record)),
     );
@@ -1260,6 +1371,7 @@ function App() {
 
   function addManualReimbursementRecord() {
     const record = createManualCreditCardRecord(true);
+    pushHistory('新增记录');
     clearResultFilters();
     setRecords((current) => [record, ...current]);
     setActiveTab('result');
@@ -1268,12 +1380,14 @@ function App() {
 
   function deleteRecord(recordId: string) {
     if (!window.confirm('确定删除这条记录吗？删除后会从消费筛选和报销结果中同时移除。')) return;
+    pushHistory('删除记录');
     setRecords((current) => current.filter((record) => record.id !== recordId));
     setResultExcludeHistory(createEmptyResultExcludeHistory());
     toast.success('已删除 1 条记录');
   }
 
   function updateSelectedReimburser(reimburser: string) {
+    pushHistory('批量设置报销人');
     setRecords((current) =>
       current.map((record) =>
         record.isCompanyExpense ? { ...record, reimburser } : record,
@@ -1284,6 +1398,7 @@ function App() {
   }
 
   function removeFromReimbursement(recordId: string) {
+    pushHistory('移出报销结果');
     setRecords((current) =>
       current.map((record) =>
         record.id === recordId ? { ...record, isCompanyExpense: false } : record,
@@ -1309,6 +1424,7 @@ function App() {
       )
     )
       return;
+    pushHistory('批量删除');
     setRecords((current) => current.filter((record) => !selectedIds.has(record.id)));
     setResultExcludeHistory(createEmptyResultExcludeHistory());
     toast.success(`已删除 ${selectedIds.size} 条记录`);
@@ -1316,6 +1432,7 @@ function App() {
 
   function invertSelectedFiltered() {
     const selectedIds = new Set(selectedRecords.map((r) => r.id));
+    pushHistory('反转选中状态');
     setRecords((current) =>
       current.map((record) =>
         filteredRecords.some((f) => f.id === record.id)
@@ -1337,6 +1454,7 @@ function App() {
       return;
     }
     const updatedIds = filteredRecords.map((r) => r.id);
+    pushHistory('批量填备注');
     setRecords((current) =>
       current.map((record) => (updatedIds.includes(record.id) ? { ...record, billRemark: value } : record)),
     );
@@ -1371,6 +1489,7 @@ function App() {
     }
     const col = batchReplaceColumn;
     let replaced = 0;
+    pushHistory('批量替换');
     setRecords((current) =>
       current.map((record) => {
         if (!targets.includes(record.id)) return record;
@@ -1486,6 +1605,7 @@ function App() {
       return;
     }
     const ids = Array.from(selectedResultRowIds);
+    pushHistory('移出报销结果(批量)');
     setRecords((current) =>
       current.map((record) => (ids.includes(record.id) ? { ...record, isCompanyExpense: false } : record)),
     );
@@ -1507,6 +1627,7 @@ function App() {
     const [lo, hi] = fromIdx <= toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
     const ids = new Set<string>();
     for (let i = lo; i <= hi; i += 1) ids.add(order[i].id);
+    pushHistory('标记公司消费');
     setRecords((current) =>
       current.map((record) => (ids.has(record.id) ? { ...record, isCompanyExpense: value } : record)),
     );
@@ -1520,6 +1641,7 @@ function App() {
       paintCompanyExpenseRange(filterSelectionAnchorId, id, value);
       return;
     }
+    pushHistory('标记公司消费');
     setRecords((current) =>
       current.map((record) => (record.id === id ? { ...record, isCompanyExpense: !record.isCompanyExpense } : record)),
     );
@@ -1711,6 +1833,7 @@ function App() {
         .map((record) => record.id),
     );
     if (!matchedIds.size) return;
+    pushHistory('应用自动规则');
     setRecords((current) =>
       current.map((record) =>
         matchedIds.has(record.id)
@@ -1736,6 +1859,7 @@ function App() {
       .map((record) => record.id);
     if (!matchedIds.length) return;
     const matchedIdSet = new Set(matchedIds);
+    pushHistory('筛除记录');
     setResultExcludeHistory((current) => ({
       ...current,
       [ruleId]: [...(current[ruleId] ?? []), matchedIds],
@@ -1766,6 +1890,7 @@ function App() {
     });
 
     if (!usedIds.size) return;
+    pushHistory('筛除记录');
     setResultExcludeHistory((current) => {
       const next = { ...current };
       resultExcludeRules.forEach((rule) => {
@@ -1796,6 +1921,7 @@ function App() {
 
   function setCompanyExpenseForFiltered(checked: boolean) {
     const filteredIds = new Set(filteredRecords.map((record) => record.id));
+    pushHistory(checked ? '全选筛选结果' : '取消全选筛选结果');
     setRecords((current) =>
       current.map((record) =>
         filteredIds.has(record.id) ? { ...record, isCompanyExpense: checked } : record,
@@ -1806,6 +1932,7 @@ function App() {
 
   function classifySelectedReimbursements() {
     const selectedIds = new Set(selectedRecords.map((record) => record.id));
+    pushHistory('重新分类');
     setRecords((current) =>
       current.map((record) =>
         selectedIds.has(record.id) ? fillMissingClassification(record) : record,
@@ -1851,6 +1978,7 @@ function App() {
   }
 
   function clearExpenseData() {
+    pushHistory('清空消费筛选数据');
     setRecords([]);
     setSummaries([]);
     clearFilters();
@@ -1863,6 +1991,7 @@ function App() {
   }
 
   function clearReimbursementData() {
+    pushHistory('清空报销结果数据');
     setRecords((current) =>
       current.map((record) =>
         record.isCompanyExpense
@@ -3033,6 +3162,26 @@ function App() {
               清空数据
             </button>
           )}
+          <div className="undo-redo-group">
+            <button
+              type="button"
+              className="ghost-button summary-clear-button"
+              disabled={!undoStack.length}
+              title={undoStack.length ? `撤回：${undoStack[undoStack.length - 1].label}（Ctrl/⌘+Z）` : '暂无可撤回的操作'}
+              onClick={undo}
+            >
+              <Undo2 size={16} /> 撤回{undoStack.length ? `（${undoStack.length}）` : ''}
+            </button>
+            <button
+              type="button"
+              className="ghost-button summary-clear-button"
+              disabled={!redoStack.length}
+              title={redoStack.length ? `重做：${redoStack[redoStack.length - 1].label}（Ctrl/⌘+Shift+Z）` : '暂无可重做的操作'}
+              onClick={redo}
+            >
+              <Redo2 size={16} /> 重做
+            </button>
+          </div>
         </div>
       </header>
 

@@ -74,6 +74,14 @@ h2 {
   white-space: nowrap;
 }
 
+.undo-redo-group {
+  display: flex;
+  gap: 8px;
+  margin-left: 4px;
+  padding-left: 12px;
+  border-left: 1px solid #d9e0ea;
+}
+
 .tabs {
   display: flex;
   gap: 8px;

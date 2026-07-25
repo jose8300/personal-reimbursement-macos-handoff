@@ -7,6 +7,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.4.8',
+    date: '2026-07-17',
+    title: '移除「发现候选规则」行为学规则建议',
+    changes: [
+      '移除消费筛选页「发现候选规则」横幅：不再根据勾选习惯归纳关键词并推荐自动筛入规则',
+      '清理 `src/utils/selectionInsight.ts` 中的相关函数、类型与辅助函数（suggestRulesFromBehavior / BehaviorRuleSuggestion / tokenize / isCoveredByExistingRule / BEHAVIOR_STOPWORDS）',
+      '移除 App.tsx 中的 `dismissedSuggestionKeywords` 状态、`behaviorSuggestions` 派生与 `saveBehaviorSuggestion` 逻辑，以及对应 CSS 样式',
+      '等级二判定洞察其余功能（命中理由、置信度、规则影响预览、边界主动复核）保持不变',
+    ],
+  },
+  {
     version: '1.4.7',
     date: '2026-07-17',
     title: '多步撤回 / 重做（撤销上一步）',

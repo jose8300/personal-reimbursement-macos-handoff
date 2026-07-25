@@ -2060,67 +2060,6 @@ td input.amount-input {
 }
 
 /* 行为学候选规则横幅 */
-.suggestion-banner {
-  border: 1px solid #cfe3ff;
-  background: #f3f8ff;
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-}
-
-.suggestion-banner-head {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-bottom: 8px;
-}
-
-.suggestion-banner-head strong {
-  font-size: 14px;
-}
-
-.suggestion-banner-head span {
-  color: #475467;
-  font-size: 12px;
-}
-
-.suggestion-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.suggestion-item {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-  background: #fff;
-  border: 1px solid #e4ecf5;
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.suggestion-keyword {
-  font-weight: 700;
-  color: #1d4ed8;
-}
-
-.suggestion-meta {
-  flex: 1 1 240px;
-  color: #475467;
-  font-size: 12px;
-}
-
-.suggestion-actions {
-  display: flex;
-  gap: 6px;
-}
-
 /* 边界主动复核面板 */
 .boundary-panel {
   border: 1px solid #f0d3b0;

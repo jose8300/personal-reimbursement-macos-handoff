@@ -44,9 +44,7 @@ import {
   findBoundaryCases,
   getRecordInsight,
   previewAutoRuleImpact,
-  suggestRulesFromBehavior,
   type BoundaryCase,
-  type BehaviorRuleSuggestion,
 } from './utils/selectionInsight';
 import { changelog } from './changelog';
 import {
@@ -806,7 +804,6 @@ function App() {
   // 等级二：边界复核展开状态 + 已忽略的边界/建议项
   const [showBoundaryReview, setShowBoundaryReview] = useState(false);
   const [dismissedBoundaryIds, setDismissedBoundaryIds] = useState<Set<string>>(new Set());
-  const [dismissedSuggestionKeywords, setDismissedSuggestionKeywords] = useState<Set<string>>(new Set());
 
   // 等级三①：结构化报销单
   const [showFormBuilder, setShowFormBuilder] = useState(false);
@@ -1091,16 +1088,6 @@ function App() {
     [boundaryCasesAll, dismissedBoundaryIds],
   );
 
-  // 等级二派生：从行为学归纳的候选规则
-  const behaviorSuggestionsAll = useMemo(
-    () => suggestRulesFromBehavior(records, customRules),
-    [records, customRules],
-  );
-  const behaviorSuggestions = useMemo(
-    () => behaviorSuggestionsAll.filter((item) => !dismissedSuggestionKeywords.has(item.keyword)),
-    [behaviorSuggestionsAll, dismissedSuggestionKeywords],
-  );
-
   function applyBoundaryCase(item: BoundaryCase) {
     updateRecord(item.record.id, applyBoundarySuggestion(item.record, item.suggestedAction));
     setDismissedBoundaryIds((prev) => new Set(prev).add(item.record.id));
@@ -1108,19 +1095,6 @@ function App() {
 
   function dismissBoundaryCase(item: BoundaryCase) {
     setDismissedBoundaryIds((prev) => new Set(prev).add(item.record.id));
-  }
-
-  function saveBehaviorSuggestion(suggestion: BehaviorRuleSuggestion) {
-    const label = suggestion.keyword;
-    const keywords = [suggestion.keyword];
-    const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const rule: CustomAutoRule = { id, label, keywords };
-    const next = [...customRules, rule];
-    setCustomRules(next);
-    writeCustomRules(next);
-    setSelectedAutoRuleIds((prev) => [...prev, id]);
-    setDismissedSuggestionKeywords((prev) => new Set(prev).add(suggestion.keyword));
-    toast.success(`已存为规则：${label}`);
   }
 
   const reimbursements = useMemo(() => toReimbursementRecords(records), [records]);
@@ -3592,44 +3566,6 @@ function App() {
               </div>
             </div>
           </div>
-
-          {behaviorSuggestions.length > 0 && (
-            <div className="suggestion-banner">
-              <div className="suggestion-banner-head">
-                <strong>发现候选规则</strong>
-                <span>根据你的勾选习惯归纳，{behaviorSuggestions.length} 个关键词可能值得设为自动筛入规则</span>
-              </div>
-              <ul className="suggestion-list">
-                {behaviorSuggestions.map((suggestion) => (
-                  <li key={suggestion.keyword} className="suggestion-item">
-                    <span className="suggestion-keyword">含「{suggestion.keyword}」</span>
-                    <span className="suggestion-meta">
-                      你在 {suggestion.selectedCount} 条选中记录里用到，未选中里仅 {suggestion.unselectedCount} 条 · 置信度{' '}
-                      {Math.round(suggestion.confidence * 100)}%
-                    </span>
-                    <span className="suggestion-actions">
-                      <button
-                        type="button"
-                        className="primary-button compact"
-                        onClick={() => saveBehaviorSuggestion(suggestion)}
-                      >
-                        存为规则
-                      </button>
-                      <button
-                        type="button"
-                        className="ghost-button compact-secondary-action"
-                        onClick={() =>
-                          setDismissedSuggestionKeywords((prev) => new Set(prev).add(suggestion.keyword))
-                        }
-                      >
-                        忽略
-                      </button>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           {showBoundaryReview && boundaryCases.length > 0 && (
             <div className="boundary-panel">

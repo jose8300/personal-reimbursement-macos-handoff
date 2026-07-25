@@ -3,7 +3,6 @@
 // 置信度/命中理由/影响预览/边界复核/行为学规则建议都由此模块派生，App.tsx 只负责展示。
 
 import type { ExpenseRecord } from '../types/expense';
-import { getRecordText } from './appHelpers';
 import { fillMissingClassification } from './classifyExpense';
 import {
   getAutoRuleDisplayList,
@@ -39,13 +38,6 @@ export type BoundaryCase = {
   suggestedAction: 'select' | 'deselect';
 };
 
-export type BehaviorRuleSuggestion = {
-  keyword: string;
-  selectedCount: number;
-  unselectedCount: number;
-  confidence: number;
-};
-
 // 每条内置规则的基准置信度（0-100）：判定越明确越高，越依赖主观判断越低
 const AUTO_RULE_CONFIDENCE: Record<string, number> = {
   largeExpense: 92,
@@ -62,13 +54,6 @@ const AUTO_RULE_CONFIDENCE: Record<string, number> = {
   chinaMobile: 80,
   stateGridXiamen: 82,
 };
-
-// 行为学建议时忽略的高频通用词，避免产生噪声规则
-const BEHAVIOR_STOPWORDS = new Set([
-  '微信', '支付宝', '转账', '支付', '银行', '余额', '零钱', '账单', '交易', '消费',
-  '收入', '支出', '收款', '付款', '订单', '商户', '明细', '信用卡', '借记', '理财',
-  '红包', '钱包', '现金', '提现', '充值', '退款', '手续费', '利息', '还款', '分期',
-]);
 
 export function buildRuleLabelMap(customRules: CustomAutoRule[]): Record<string, string> {
   return Object.fromEntries(getAutoRuleDisplayList(customRules).map((rule) => [rule.id, rule.label]));
@@ -180,71 +165,6 @@ export function findBoundaryCases(
     return b.record.amount - a.record.amount;
   });
   return cases.slice(0, limit);
-}
-
-function tokenize(text: string): string[] {
-  const lower = text.toLowerCase();
-  const tokens: string[] = [];
-  const cjkSegments = lower.match(/[一-龥]+/g) ?? [];
-  for (const segment of cjkSegments) {
-    for (let n = 2; n <= 4; n += 1) {
-      for (let i = 0; i + n <= segment.length; i += 1) tokens.push(segment.slice(i, i + n));
-    }
-  }
-  const words = lower.match(/[a-z0-9]+/g) ?? [];
-  tokens.push(...words);
-  return tokens;
-}
-
-function isCoveredByExistingRule(keyword: string, customRules: CustomAutoRule[]): boolean {
-  const k = keyword.toLowerCase();
-  return customRules.some((rule) =>
-    rule.keywords.some((kw) => {
-      const lk = kw.toLowerCase();
-      return k.includes(lk) || lk.includes(k);
-    }),
-  );
-}
-
-// 从行为学规则：分析「用户手动勾选 / 未勾选」的模式，归纳出候选关键词规则
-export function suggestRulesFromBehavior(
-  records: ExpenseRecord[],
-  customRules: CustomAutoRule[],
-  limit = 5,
-): BehaviorRuleSuggestion[] {
-  const selected = records.filter((record) => record.isCompanyExpense);
-  const unselected = records.filter((record) => !record.isCompanyExpense);
-  if (selected.length < 2) return [];
-
-  const selCount = new Map<string, number>();
-  const unCount = new Map<string, number>();
-  const bump = (map: Map<string, number>, text: string) => {
-    for (const token of tokenize(text)) {
-      if (token.length < 2) continue;
-      if (/^[0-9]+$/.test(token)) continue;
-      if (BEHAVIOR_STOPWORDS.has(token)) continue;
-      map.set(token, (map.get(token) ?? 0) + 1);
-    }
-  };
-  selected.forEach((record) => bump(selCount, getRecordText(record)));
-  unselected.forEach((record) => bump(unCount, getRecordText(record)));
-
-  const suggestions: BehaviorRuleSuggestion[] = [];
-  for (const [keyword, sc] of selCount) {
-    if (sc < 2) continue; // 至少在 2 条选中记录里出现
-    const uc = unCount.get(keyword) ?? 0;
-    const total = sc + uc;
-    if (uc > sc) continue; // 未选里出现更多 → 不是好信号
-    const confidence = sc / total;
-    if (confidence < 0.8) continue; // 噪声过滤
-    if (isCoveredByExistingRule(keyword, customRules)) continue;
-    suggestions.push({ keyword, selectedCount: sc, unselectedCount: uc, confidence });
-  }
-  // 兼顾支持度与置信度排序，避免只挑长尾噪声
-  suggestions.sort(
-    (a, b) => b.selectedCount * b.confidence - a.selectedCount * a.confidence,
-  );
-  return suggestions.slice(0, limit);
 }
 
 // 采纳一条边界复核建议（用于 UI 直接调用）

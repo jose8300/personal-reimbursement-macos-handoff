@@ -59,6 +59,7 @@ import {
 } from './utils/reimbursementForm';
 import { Footer } from './components/Footer';
 import { parseBillFiles, migrateTransactionMeta } from './utils/parseBills';
+import { detectDuplicates } from './utils/dedupe';
 import {
   addDays,
   createMonthSelectOptions,
@@ -110,6 +111,7 @@ type ExpenseColumnKey =
   | 'transactionType'
   | 'transactionStatus'
   | 'transactionId'
+  | 'dedupe'
   | 'counterparty'
   | 'productName'
   | 'billRemark'
@@ -168,6 +170,7 @@ const defaultExpenseColumnOrder: ExpenseColumnKey[] = [
   'note',
   'transactionStatus',
   'transactionId',
+  'dedupe',
 ];
 const expenseColumnLabels: Record<ExpenseColumnKey, string> = {
   actions: '操作',
@@ -178,6 +181,7 @@ const expenseColumnLabels: Record<ExpenseColumnKey, string> = {
   transactionType: '交易类型/来源',
   transactionStatus: '交易状态',
   transactionId: '交易订单号',
+  dedupe: '重复',
   counterparty: '交易对方',
   productName: '商品名称',
   billRemark: '备注',
@@ -767,6 +771,7 @@ function createManualCreditCardRecord(isCompanyExpense: boolean): ExpenseRecord 
 
 function App() {
   const [records, setRecords] = useState<ExpenseRecord[]>([]);
+  const duplicateMap = useMemo(() => detectDuplicates(records), [records]);
   const [summaries, setSummaries] = useState<ParseSummary[]>([]);
   const [isParsing, setIsParsing] = useState(false);
   const [monthFilter, setMonthFilter] = useState<ColumnFilterValue>({ mode: 'include', values: [] });
@@ -2137,7 +2142,11 @@ function App() {
     setFilterQueries({ ...createEmptyFilterQueries(), ...draft.filterQueries });
     setAmountSort(draft.amountSort);
     setDateTimeSort(draft.dateTimeSort ?? 'none');
-    setExpenseColumnOrder(draft.expenseColumnOrder);
+    setExpenseColumnOrder(
+      draft.expenseColumnOrder?.includes('dedupe')
+        ? draft.expenseColumnOrder
+        : [...(draft.expenseColumnOrder ?? defaultExpenseColumnOrder), 'dedupe'],
+    );
     setHiddenExpenseColumnKeys(draft.hiddenExpenseColumnKeys ?? []);
     setResultColumnOrder(draft.resultColumnOrder);
     setHiddenResultColumnKeys(draft.hiddenResultColumnKeys ?? []);
@@ -2519,6 +2528,8 @@ function App() {
         );
       case 'transactionId':
         return renderStaticHeader(columnKey, '交易订单号');
+      case 'dedupe':
+        return renderStaticHeader(columnKey, '重复');
       case 'counterparty':
         return (
           <FilterHeader
@@ -2735,6 +2746,27 @@ function App() {
             </span>
           </td>
         );
+      case 'dedupe': {
+        const info = duplicateMap.get(record.id);
+        if (!info?.isDuplicate) {
+          return (
+            <td key={columnKey} className="expense-dedupe-column">
+              <span className="text-muted">—</span>
+            </td>
+          );
+        }
+        const title =
+          info.basis === 'orderId'
+            ? '交易订单号相同，疑似同一笔重复导入'
+            : '金额相同且发生时间相近（≤2 小时），疑似跨平台重复支付';
+        return (
+          <td key={columnKey} className="expense-dedupe-column">
+            <span className="dup-badge" title={title}>
+              重复 {info.dupCount}
+            </span>
+          </td>
+        );
+      }
       case 'counterparty':
         return (
           <td key={columnKey} className="expense-counterparty-column">
@@ -3732,6 +3764,7 @@ function App() {
                       'expense-row',
                       record.isCompanyExpense ? 'selected-row' : '',
                       isLegalHolidayDate(record.dateTime) ? 'holiday-row' : '',
+                      duplicateMap.get(record.id)?.isDuplicate ? 'duplicate-row' : '',
                     ].filter(Boolean).join(' ')}
                     onClick={(event) => handleExpenseRowClick(event, record)}
                   >

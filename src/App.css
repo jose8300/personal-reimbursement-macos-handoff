@@ -1738,6 +1738,33 @@ td input.amount-input {
   text-overflow: ellipsis;
 }
 
+.expense-dedupe-column {
+  width: 78px;
+  min-width: 78px;
+  max-width: 78px;
+  text-align: center;
+}
+
+.dup-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b42318;
+  background: #fef3f2;
+  border: 1px solid #fda29b;
+  white-space: nowrap;
+}
+
+.duplicate-row {
+  background: #fff5f4;
+}
+
+.duplicate-row:hover {
+  background: #ffe9e6;
+}
+
 .expense-counterparty-column {
   width: 148px;
   min-width: 148px;

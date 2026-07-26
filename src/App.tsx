@@ -185,7 +185,7 @@ const expenseColumnLabels: Record<ExpenseColumnKey, string> = {
   transactionType: '交易类型/来源',
   transactionStatus: '交易状态',
   transactionId: '交易订单号',
-  dedupe: '重复',
+  dedupe: '疑似重复',
   counterparty: '交易对方',
   productName: '商品名称',
   billRemark: '备注',
@@ -2541,7 +2541,7 @@ function App() {
       case 'transactionId':
         return renderStaticHeader(columnKey, '交易订单号');
       case 'dedupe':
-        return renderStaticHeader(columnKey, '重复');
+        return renderStaticHeader(columnKey, '疑似重复');
       case 'counterparty':
         return (
           <FilterHeader

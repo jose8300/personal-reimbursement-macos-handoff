@@ -58,7 +58,7 @@ import {
   type ReimbursementFormTemplate,
 } from './utils/reimbursementForm';
 import { Footer } from './components/Footer';
-import { parseBillFiles } from './utils/parseBills';
+import { parseBillFiles, migrateTransactionMeta } from './utils/parseBills';
 import {
   addDays,
   createMonthSelectOptions,
@@ -911,7 +911,7 @@ function App() {
       resultExcludeHistory: structuredClone(resultExcludeHistoryRef.current),
       ts: Date.now(),
     };
-    setRecords(entry.records);
+    setRecords(migrateTransactionMeta(entry.records));
     setResultExcludeHistory(entry.resultExcludeHistory);
     setUndoStack(stack.slice(0, -1));
     setRedoStack((rs) => [...rs, current].slice(-MAX_UNDO_STEPS));
@@ -928,7 +928,7 @@ function App() {
       resultExcludeHistory: structuredClone(resultExcludeHistoryRef.current),
       ts: Date.now(),
     };
-    setRecords(entry.records);
+    setRecords(migrateTransactionMeta(entry.records));
     setResultExcludeHistory(entry.resultExcludeHistory);
     setRedoStack(stack.slice(0, -1));
     setUndoStack((us) => [...us, current].slice(-MAX_UNDO_STEPS));
@@ -2128,7 +2128,7 @@ function App() {
       return;
     }
 
-    setRecords(draft.records);
+    setRecords(migrateTransactionMeta(draft.records));
     setSummaries(draft.summaries);
     setActiveTab(draft.activeTab === 'upload' ? 'filter' : draft.activeTab);
     setMonthFilter(draft.monthFilter);

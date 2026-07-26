@@ -34,7 +34,7 @@ export const platformMappings: PlatformMapping[] = [
       billRemark: ['备注', '附言'],
       paymentAccount: ['收/付款方式', '付款方式', '支付方式', '扣款账户', '账户', '支付方式', '当前状态'],
       transactionStatus: ['交易状态', '当前状态', '状态'],
-      transactionId: ['交易订单号', '订单号', '交易单号'],
+      transactionId: ['交易订单号', '订单号', '交易单号', '商户单号', '微信支付订单号', '微信订单号'],
     },
   },
   {
@@ -51,7 +51,7 @@ export const platformMappings: PlatformMapping[] = [
       billRemark: ['备注', '附言'],
       paymentAccount: ['付款方式', '收/付款方式', '支付方式', '扣款账户', '账户'],
       transactionStatus: ['交易状态', '状态'],
-      transactionId: ['交易订单号', '订单号'],
+      transactionId: ['交易订单号', '订单号', '交易号', '商家订单号', '商户订单号', '支付宝交易号'],
     },
   },
   {
@@ -68,7 +68,7 @@ export const platformMappings: PlatformMapping[] = [
       billRemark: ['附言', '备注', '用途'],
       paymentAccount: ['账号', '账户', '卡号', '扣款账户', '付款账号'],
       transactionStatus: ['交易状态', '状态'],
-      transactionId: ['交易订单号', '订单号', '流水号'],
+      transactionId: ['交易订单号', '订单号', '流水号', '交易单号', '凭证号', '交易流水号'],
     },
   },
   {
@@ -85,7 +85,7 @@ export const platformMappings: PlatformMapping[] = [
       billRemark: ['备注', '附言'],
       paymentAccount: ['卡号', '账户', '扣款账户', '支付方式'],
       transactionStatus: ['交易状态', '状态'],
-      transactionId: ['交易订单号', '订单号'],
+      transactionId: ['交易订单号', '订单号', '交易单号', '交易号', '凭证号', '授权号'],
     },
   },
 ];
@@ -100,5 +100,5 @@ export const fallbackFields: Record<FieldKey, string[]> = {
   billRemark: ['备注', '附言', '用途'],
   paymentAccount: ['支付方式', '扣款账户', '付款方式', '账户', '账号', '卡号', '收/付款方式'],
   transactionStatus: ['交易状态', '当前状态', '状态'],
-  transactionId: ['交易订单号', '订单号', '交易单号', '流水号'],
+  transactionId: ['交易订单号', '订单号', '交易单号', '流水号', '商户单号', '交易号', '微信支付订单号', '支付宝交易号', '商家订单号', '凭证号', '授权号'],
 };

@@ -149,6 +149,52 @@ function createRecord(
   };
 }
 
+// 迁移：旧数据中缺失 transactionId / transactionStatus 时，从原始行 raw 重新提取（已有值不覆盖）
+export function migrateTransactionMeta(records: ExpenseRecord[]): ExpenseRecord[] {
+  return records.map((record) => {
+    const raw = record.raw;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return record;
+    const headers = Object.keys(raw);
+    if (!headers.length) return record;
+
+    let transactionId = record.transactionId ?? '';
+    let transactionStatus = record.transactionStatus ?? '';
+    let changed = false;
+
+    if (!transactionId) {
+      const platformConfig = platformMappings.find((mapping) => mapping.platform === record.sourcePlatform);
+      const field = findHeader(headers, [
+        ...(platformConfig?.fields.transactionId ?? []),
+        ...fallbackFields.transactionId,
+      ]);
+      if (field) {
+        const value = String(raw[field] ?? '').trim();
+        if (value) {
+          transactionId = value;
+          changed = true;
+        }
+      }
+    }
+
+    if (!transactionStatus) {
+      const platformConfig = platformMappings.find((mapping) => mapping.platform === record.sourcePlatform);
+      const field = findHeader(headers, [
+        ...(platformConfig?.fields.transactionStatus ?? []),
+        ...fallbackFields.transactionStatus,
+      ]);
+      if (field) {
+        const value = String(raw[field] ?? '').trim();
+        if (value) {
+          transactionStatus = value;
+          changed = true;
+        }
+      }
+    }
+
+    return changed ? { ...record, transactionId, transactionStatus } : record;
+  });
+}
+
 async function parseWorkbook(file: File): Promise<ParsedSheet> {
   if (file.name.toLowerCase().endsWith('.csv')) {
     const text = await decodeCsv(file);

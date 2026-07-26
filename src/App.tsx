@@ -83,6 +83,7 @@ type ColumnFilterKey =
   | 'sourcePlatform'
   | 'weekday'
   | 'transactionType'
+  | 'transactionStatus'
   | 'counterparty'
   | 'productName'
   | 'billRemark'
@@ -138,6 +139,7 @@ const columnFilterLabels: Record<ColumnFilterKey, string> = {
   sourcePlatform: '来源平台',
   weekday: '星期',
   transactionType: '交易类型/来源',
+  transactionStatus: '交易状态',
   counterparty: '交易对方',
   productName: '商品名称',
   billRemark: '备注',
@@ -157,13 +159,13 @@ const defaultExpenseColumnOrder: ExpenseColumnKey[] = [
   'amount',
   'productName',
   'transactionType',
-  'transactionStatus',
   'counterparty',
   'billRemark',
   'paymentAccount',
   'project',
   'category',
   'note',
+  'transactionStatus',
 ];
 const expenseColumnLabels: Record<ExpenseColumnKey, string> = {
   actions: '操作',
@@ -2492,7 +2494,25 @@ function App() {
           />
         );
       case 'transactionStatus':
-        return renderStaticHeader(columnKey, '交易状态');
+        return (
+          <FilterHeader
+            key={columnKey}
+            columnKey={columnKey}
+            label="交易状态"
+            filterKey="transactionStatus"
+            className="expense-status-column"
+            options={columnFilterOptions.transactionStatus}
+            query={filterQueries.transactionStatus}
+            value={columnFilters.transactionStatus}
+            isOpen={openFilterKey === 'transactionStatus'}
+            isDragging={draggedColumnKey === columnKey}
+            dragProps={sortableProps}
+            onToggle={() => setOpenFilterKey((current) => (current === 'transactionStatus' ? null : 'transactionStatus'))}
+            onConfirm={() => setOpenFilterKey(null)}
+            onQueryChange={(query) => updateFilterQuery('transactionStatus', query)}
+            onChange={(patch) => updateColumnFilter('transactionStatus', patch)}
+          />
+        );
       case 'counterparty':
         return (
           <FilterHeader

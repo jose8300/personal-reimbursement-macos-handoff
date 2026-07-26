@@ -1600,6 +1600,14 @@ td input.amount-input {
   max-width: 158px;
 }
 
+.expense-status-column {
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+  white-space: nowrap;
+  text-align: center;
+}
+
 .expense-counterparty-column {
   width: 148px;
   min-width: 148px;

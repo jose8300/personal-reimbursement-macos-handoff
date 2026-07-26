@@ -5,6 +5,12 @@ import { toReimbursementRecord } from './reimbursementSync';
 import { flattenFormRows, FORM_COLUMN_LABELS, FORM_DIM_LABELS, type FormColumnKey, type FormGroupDim, type ReimbursementFormModel } from './reimbursementForm';
 import { formatCurrency } from './format';
 
+function exportTimestamp(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
+}
+
 export function toReimbursementRecords(records: ExpenseRecord[]): ReimbursementRecord[] {
   return records
     .filter((record) => record.isCompanyExpense)
@@ -46,7 +52,7 @@ export function exportReimbursementsAsXlsx(records: ReimbursementRecord[]) {
       new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       }),
-      `个人报销表-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      `个人报销表-${exportTimestamp()}.xlsx`,
     );
   });
 }
@@ -62,7 +68,7 @@ export function exportReimbursementsAsCsv(records: ReimbursementRecord[]) {
         .join(','),
     ),
   ].join('\n');
-  saveAs(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), '个人报销表.csv');
+  saveAs(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `个人报销表-${exportTimestamp()}.csv`);
 }
 
 function dimLabel(dim: FormGroupDim | null): string {
@@ -143,7 +149,7 @@ export function exportStructuredFormAsXlsx(model: ReimbursementFormModel, column
       new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       }),
-      `个人报销单-${model.generatedAt.slice(0, 10)}.xlsx`,
+      `个人报销单-${exportTimestamp()}.xlsx`,
     );
   });
 }

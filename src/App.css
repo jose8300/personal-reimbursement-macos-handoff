@@ -1608,6 +1608,15 @@ td input.amount-input {
   text-align: center;
 }
 
+.expense-transaction-id-column {
+  width: 200px;
+  min-width: 180px;
+  font-family: monospace;
+  font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .expense-counterparty-column {
   width: 148px;
   min-width: 148px;

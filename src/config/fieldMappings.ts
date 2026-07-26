@@ -9,7 +9,8 @@ export type FieldKey =
   | 'productName'
   | 'billRemark'
   | 'paymentAccount'
-  | 'transactionStatus';
+  | 'transactionStatus'
+  | 'transactionId';
 
 export type PlatformMapping = {
   platform: SourcePlatform;
@@ -33,6 +34,7 @@ export const platformMappings: PlatformMapping[] = [
       billRemark: ['备注', '附言'],
       paymentAccount: ['收/付款方式', '付款方式', '支付方式', '扣款账户', '账户', '支付方式', '当前状态'],
       transactionStatus: ['交易状态', '当前状态', '状态'],
+      transactionId: ['交易订单号', '订单号', '交易单号'],
     },
   },
   {
@@ -49,6 +51,7 @@ export const platformMappings: PlatformMapping[] = [
       billRemark: ['备注', '附言'],
       paymentAccount: ['付款方式', '收/付款方式', '支付方式', '扣款账户', '账户'],
       transactionStatus: ['交易状态', '状态'],
+      transactionId: ['交易订单号', '订单号'],
     },
   },
   {
@@ -65,6 +68,7 @@ export const platformMappings: PlatformMapping[] = [
       billRemark: ['附言', '备注', '用途'],
       paymentAccount: ['账号', '账户', '卡号', '扣款账户', '付款账号'],
       transactionStatus: ['交易状态', '状态'],
+      transactionId: ['交易订单号', '订单号', '流水号'],
     },
   },
   {
@@ -81,6 +85,7 @@ export const platformMappings: PlatformMapping[] = [
       billRemark: ['备注', '附言'],
       paymentAccount: ['卡号', '账户', '扣款账户', '支付方式'],
       transactionStatus: ['交易状态', '状态'],
+      transactionId: ['交易订单号', '订单号'],
     },
   },
 ];
@@ -95,4 +100,5 @@ export const fallbackFields: Record<FieldKey, string[]> = {
   billRemark: ['备注', '附言', '用途'],
   paymentAccount: ['支付方式', '扣款账户', '付款方式', '账户', '账号', '卡号', '收/付款方式'],
   transactionStatus: ['交易状态', '当前状态', '状态'],
+  transactionId: ['交易订单号', '订单号', '交易单号', '流水号'],
 };

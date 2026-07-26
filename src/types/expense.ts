@@ -15,6 +15,7 @@ export type ExpenseRecord = {
   billRemark: string;
   paymentAccount: string;
   transactionStatus: string;
+  transactionId: string;
   isCompanyExpense: boolean;
   reimbursementMonth: string;
   reimburser: string;

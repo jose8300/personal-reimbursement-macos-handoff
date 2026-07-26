@@ -109,6 +109,7 @@ type ExpenseColumnKey =
   | 'amount'
   | 'transactionType'
   | 'transactionStatus'
+  | 'transactionId'
   | 'counterparty'
   | 'productName'
   | 'billRemark'
@@ -166,6 +167,7 @@ const defaultExpenseColumnOrder: ExpenseColumnKey[] = [
   'category',
   'note',
   'transactionStatus',
+  'transactionId',
 ];
 const expenseColumnLabels: Record<ExpenseColumnKey, string> = {
   actions: '操作',
@@ -175,6 +177,7 @@ const expenseColumnLabels: Record<ExpenseColumnKey, string> = {
   amount: '金额',
   transactionType: '交易类型/来源',
   transactionStatus: '交易状态',
+  transactionId: '交易订单号',
   counterparty: '交易对方',
   productName: '商品名称',
   billRemark: '备注',
@@ -752,6 +755,7 @@ function createManualCreditCardRecord(isCompanyExpense: boolean): ExpenseRecord 
     billRemark: '',
     paymentAccount: '',
     transactionStatus: '',
+    transactionId: '',
     isCompanyExpense,
     reimbursementMonth: getMonth(dateTime),
     reimburser: 'Musk',
@@ -2513,6 +2517,8 @@ function App() {
             onChange={(patch) => updateColumnFilter('transactionStatus', patch)}
           />
         );
+      case 'transactionId':
+        return renderStaticHeader(columnKey, '交易订单号');
       case 'counterparty':
         return (
           <FilterHeader
@@ -2718,6 +2724,14 @@ function App() {
           <td key={columnKey} className="expense-status-column">
             <span className={record.transactionStatus ? '' : 'text-muted'}>
               {record.transactionStatus || '—'}
+            </span>
+          </td>
+        );
+      case 'transactionId':
+        return (
+          <td key={columnKey} className="expense-transaction-id-column">
+            <span className={record.transactionId ? '' : 'text-muted'} title={record.transactionId}>
+              {record.transactionId || '—'}
             </span>
           </td>
         );

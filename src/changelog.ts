@@ -7,6 +7,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.4.9',
+    date: '2026-07-17',
+    title: '消费时间列支持正序/倒序排序',
+    changes: [
+      '消费筛选页与报销结果页的「消费时间」列表头新增排序按钮，循环切换：默认 → 升序 → 降序 → 默认',
+      '排序状态与金额排序互斥（激活一个会自动清除另一个），避免多列排序混淆',
+      '排序状态纳入本地进度自动保存/恢复，清空筛选时一并重置',
+      '复用并扩展 FilterHeader 组件，使其可传入可选 sortMode / sortLabel / onSort 实现列头排序',
+    ],
+  },
+  {
     version: '1.4.8',
     date: '2026-07-17',
     title: '移除「发现候选规则」行为学规则建议',

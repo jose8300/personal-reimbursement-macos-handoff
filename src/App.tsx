@@ -270,11 +270,13 @@ type LocalProgressDraft = {
   columnFilters: Record<ColumnFilterKey, ColumnFilterValue>;
   filterQueries: Record<ColumnFilterKey, string>;
   amountSort: AmountSortMode;
+  dateTimeSort: AmountSortMode;
   expenseColumnOrder: ExpenseColumnKey[];
   hiddenExpenseColumnKeys: ExpenseColumnKey[];
   resultColumnOrder: ResultColumnKey[];
   hiddenResultColumnKeys: ResultColumnKey[];
   resultAmountSort: AmountSortMode;
+  resultDateSort: AmountSortMode;
   resultFilters: Record<ResultFilterKey, ColumnFilterValue>;
   resultFilterQueries: Record<ResultFilterKey, string>;
   hideBankWalletRecords: boolean;
@@ -765,6 +767,7 @@ function App() {
   const [filterQueries, setFilterQueries] = useState<Record<ColumnFilterKey, string>>(createEmptyFilterQueries);
   const [openFilterKey, setOpenFilterKey] = useState<ColumnFilterKey | 'month' | null>(null);
   const [amountSort, setAmountSort] = useState<AmountSortMode>('none');
+  const [dateTimeSort, setDateTimeSort] = useState<AmountSortMode>('none');
   const [expenseColumnOrder, setExpenseColumnOrder] = useState<ExpenseColumnKey[]>(defaultExpenseColumnOrder);
   const [hiddenExpenseColumnKeys, setHiddenExpenseColumnKeys] = useState<ExpenseColumnKey[]>([]);
   const [draggedColumnKey, setDraggedColumnKey] = useState<ExpenseColumnKey | null>(null);
@@ -772,6 +775,7 @@ function App() {
   const [hiddenResultColumnKeys, setHiddenResultColumnKeys] = useState<ResultColumnKey[]>([]);
   const [draggedResultColumnKey, setDraggedResultColumnKey] = useState<ResultColumnKey | null>(null);
   const [resultAmountSort, setResultAmountSort] = useState<AmountSortMode>('none');
+  const [resultDateSort, setResultDateSort] = useState<AmountSortMode>('none');
   const [resultFilters, setResultFilters] = useState<Record<ResultFilterKey, ColumnFilterValue>>(
     createEmptyResultFilters,
   );
@@ -1026,15 +1030,25 @@ function App() {
   const hasActiveFilters = useMemo(() => {
     if (monthFilter.values.length > 0 || monthQuery.trim()) return true;
     if (amountSort !== 'none') return true;
+    if (dateTimeSort !== 'none') return true;
     if (!hideBankWalletRecords) return true;
     return Object.values(columnFilters).some((f) => f.values.length > 0);
-  }, [monthFilter, monthQuery, amountSort, hideBankWalletRecords, columnFilters]);
+  }, [monthFilter, monthQuery, amountSort, dateTimeSort, hideBankWalletRecords, columnFilters]);
   const sortedFilteredRecords = useMemo(() => {
-    if (amountSort === 'none') return filteredRecords;
-    return [...filteredRecords].sort((a, b) =>
-      amountSort === 'asc' ? a.amount - b.amount : b.amount - a.amount,
-    );
-  }, [filteredRecords, amountSort]);
+    if (amountSort === 'none' && dateTimeSort === 'none') return filteredRecords;
+    return [...filteredRecords].sort((a, b) => {
+      if (dateTimeSort !== 'none') {
+        const aTime = new Date(a.dateTime).getTime();
+        const bTime = new Date(b.dateTime).getTime();
+        if (aTime !== bTime) return dateTimeSort === 'asc' ? aTime - bTime : bTime - aTime;
+      }
+      if (amountSort !== 'none') {
+        const cmp = a.amount - b.amount;
+        if (cmp !== 0) return amountSort === 'asc' ? cmp : -cmp;
+      }
+      return 0;
+    });
+  }, [filteredRecords, amountSort, dateTimeSort]);
 
   const displayExpenseRecords = useMemo(() => {
     if (!showOnlySelected) return sortedFilteredRecords;
@@ -1120,11 +1134,20 @@ function App() {
     [selectedRecords, resultFilters],
   );
   const sortedResultRecords = useMemo(() => {
-    if (resultAmountSort === 'none') return filteredSelectedRecords;
-    return [...filteredSelectedRecords].sort((a, b) =>
-      resultAmountSort === 'asc' ? a.amount - b.amount : b.amount - a.amount,
-    );
-  }, [filteredSelectedRecords, resultAmountSort]);
+    if (resultAmountSort === 'none' && resultDateSort === 'none') return filteredSelectedRecords;
+    return [...filteredSelectedRecords].sort((a, b) => {
+      if (resultDateSort !== 'none') {
+        const aTime = new Date(a.dateTime).getTime();
+        const bTime = new Date(b.dateTime).getTime();
+        if (aTime !== bTime) return resultDateSort === 'asc' ? aTime - bTime : bTime - aTime;
+      }
+      if (resultAmountSort !== 'none') {
+        const cmp = a.amount - b.amount;
+        if (cmp !== 0) return resultAmountSort === 'asc' ? cmp : -cmp;
+      }
+      return 0;
+    });
+  }, [filteredSelectedRecords, resultAmountSort, resultDateSort]);
   const resultExcludeMatchedCount = useMemo(
     () =>
       filteredSelectedRecords.filter((record) =>
@@ -2000,6 +2023,7 @@ function App() {
     setColumnFilters(createEmptyColumnFilters());
     setFilterQueries(createEmptyFilterQueries());
     setAmountSort('none');
+    setDateTimeSort('none');
     setHideBankWalletRecords(true);
     setOpenFilterKey(null);
   }
@@ -2008,6 +2032,7 @@ function App() {
     setResultFilters(createEmptyResultFilters());
     setResultFilterQueries(createEmptyResultFilterQueries());
     setResultAmountSort('none');
+    setResultDateSort('none');
     setOpenResultFilterKey(null);
   }
 
@@ -2051,11 +2076,13 @@ function App() {
       columnFilters,
       filterQueries,
       amountSort,
+      dateTimeSort,
       expenseColumnOrder,
       hiddenExpenseColumnKeys,
       resultColumnOrder,
       hiddenResultColumnKeys,
       resultAmountSort,
+      resultDateSort,
       resultFilters,
       resultFilterQueries,
       hideBankWalletRecords,
@@ -2099,11 +2126,13 @@ function App() {
     setColumnFilters({ ...createEmptyColumnFilters(), ...draft.columnFilters });
     setFilterQueries({ ...createEmptyFilterQueries(), ...draft.filterQueries });
     setAmountSort(draft.amountSort);
+    setDateTimeSort(draft.dateTimeSort ?? 'none');
     setExpenseColumnOrder(draft.expenseColumnOrder);
     setHiddenExpenseColumnKeys(draft.hiddenExpenseColumnKeys ?? []);
     setResultColumnOrder(draft.resultColumnOrder);
     setHiddenResultColumnKeys(draft.hiddenResultColumnKeys ?? []);
     setResultAmountSort(draft.resultAmountSort);
+    setResultDateSort(draft.resultDateSort ?? 'none');
     setResultFilters({ ...createEmptyResultFilters(), ...draft.resultFilters });
     setResultFilterQueries({ ...createEmptyResultFilterQueries(), ...draft.resultFilterQueries });
     setHideBankWalletRecords(draft.hideBankWalletRecords);
@@ -2291,9 +2320,10 @@ function App() {
             aria-label="金额排序"
             title={sortSummary || '金额排序'}
             onPointerDown={(event) => event.stopPropagation()}
-            onClick={() =>
-              setAmountSort((current) => (current === 'none' ? 'asc' : current === 'asc' ? 'desc' : 'none'))
-            }
+            onClick={() => {
+              setAmountSort((current) => (current === 'none' ? 'asc' : current === 'asc' ? 'desc' : 'none'));
+              setDateTimeSort('none');
+            }}
           >
             {sortIcon}
           </button>
@@ -2334,11 +2364,12 @@ function App() {
             aria-label="报销金额排序"
             title={sortSummary || '报销金额排序'}
             onPointerDown={(event) => event.stopPropagation()}
-            onClick={() =>
+            onClick={() => {
               setResultAmountSort((current) =>
                 current === 'none' ? 'asc' : current === 'asc' ? 'desc' : 'none',
-              )
-            }
+              );
+              setResultDateSort('none');
+            }}
           >
             {sortIcon}
           </button>
@@ -2402,6 +2433,12 @@ function App() {
             isOpen={openFilterKey === 'month'}
             isDragging={draggedColumnKey === columnKey}
             dragProps={sortableProps}
+            sortMode={dateTimeSort}
+            sortLabel="消费时间排序"
+            onSort={() => {
+              setDateTimeSort((current) => (current === 'none' ? 'asc' : current === 'asc' ? 'desc' : 'none'));
+              setAmountSort('none');
+            }}
             onToggle={() => setOpenFilterKey((current) => (current === 'month' ? null : 'month'))}
             onConfirm={() => setOpenFilterKey(null)}
             onQueryChange={setMonthQuery}
@@ -2755,6 +2792,7 @@ function App() {
     if (columnKey === 'amount') return renderResultAmountHeader(columnKey);
     if (resultFilterKeys.includes(columnKey as ResultFilterKey)) {
       const filterKey = columnKey as ResultFilterKey;
+      const isDate = columnKey === 'date';
       return (
         <FilterHeader
           key={columnKey}
@@ -2767,6 +2805,16 @@ function App() {
           isOpen={openResultFilterKey === filterKey}
           isDragging={draggedResultColumnKey === columnKey}
           dragProps={getSortableResultHeaderProps(columnKey)}
+          sortMode={isDate ? resultDateSort : undefined}
+          sortLabel={isDate ? '消费时间排序' : undefined}
+          onSort={
+            isDate
+              ? () => {
+                  setResultDateSort((current) => (current === 'none' ? 'asc' : current === 'asc' ? 'desc' : 'none'));
+                  setResultAmountSort('none');
+                }
+              : undefined
+          }
           onToggle={() => setOpenResultFilterKey((current) => (current === filterKey ? null : filterKey))}
           onConfirm={() => setOpenResultFilterKey(null)}
           onQueryChange={(query) => updateResultFilterQuery(filterKey, query)}
@@ -4309,6 +4357,9 @@ function FilterHeader({
   isOpen,
   isDragging,
   dragProps,
+  sortMode,
+  sortLabel,
+  onSort,
   onToggle,
   onConfirm,
   onQueryChange,
@@ -4324,6 +4375,9 @@ function FilterHeader({
   isOpen: boolean;
   isDragging: boolean;
   dragProps: React.HTMLAttributes<HTMLTableCellElement>;
+  sortMode?: AmountSortMode;
+  sortLabel?: string;
+  onSort?: () => void;
   onToggle: () => void;
   onConfirm: () => void;
   onQueryChange: (query: string) => void;
@@ -4360,6 +4414,10 @@ function FilterHeader({
   }
 
   const summary = value.values.length ? `${value.mode === 'include' ? '正选' : '反选'} ${value.values.length}` : '';
+  const sortSummary =
+    sortMode === 'asc' ? '升序' : sortMode === 'desc' ? '降序' : '';
+  const sortIcon =
+    sortMode === 'asc' ? <ArrowUp size={14} /> : sortMode === 'desc' ? <ArrowDown size={14} /> : <ArrowUpDown size={14} />;
 
   return (
     <th
@@ -4369,6 +4427,22 @@ function FilterHeader({
     >
       <div className="th-filter-label">
         <span>{label}</span>
+        {onSort && sortMode !== undefined && (
+          <button
+            type="button"
+            className={sortMode === 'none' ? 'date-sort-button' : 'date-sort-button active'}
+            aria-label={sortLabel || `${label}排序`}
+            title={sortMode === 'asc' ? `${label}升序` : sortMode === 'desc' ? `${label}降序` : `${label}排序`}
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSort();
+            }}
+          >
+            {sortIcon}
+          </button>
+        )}
         <button
           ref={setReferenceRef}
           type="button"
@@ -4385,7 +4459,7 @@ function FilterHeader({
           <Filter size={14} />
         </button>
       </div>
-      {summary && <small>{summary}</small>}
+      {(summary || sortSummary) && <small>{[summary, sortSummary].filter(Boolean).join(' · ')}</small>}
       {isOpen && (
         <FloatingPortal>
           <div

@@ -110,7 +110,8 @@ h2 {
 .icon-button:hover,
 .filter-chip:hover,
 .filter-trigger:hover,
-.amount-sort-button:hover {
+.amount-sort-button:hover,
+.date-sort-button:hover {
   border-color: #98a6b8;
   background: #f7f9fc;
 }
@@ -500,7 +501,8 @@ select:focus-visible {
   cursor: pointer;
 }
 
-.amount-sort-button {
+.amount-sort-button,
+.date-sort-button {
   display: inline-flex;
   width: 22px;
   height: 22px;
@@ -520,7 +522,8 @@ select:focus-visible {
   color: #176f52;
 }
 
-.amount-sort-button.active {
+.amount-sort-button.active,
+.date-sort-button.active {
   border-color: #176f52;
   background: #e7f6ef;
   color: #176f52;

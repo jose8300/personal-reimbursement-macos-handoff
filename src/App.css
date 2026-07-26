@@ -2110,6 +2110,156 @@ td input.amount-input {
   border-bottom: none;
 }
 
+/* 报销前自检弹窗 */
+.self-check-modal {
+  width: min(600px, calc(100vw - 32px));
+}
+
+.self-check-body {
+  padding: 14px 20px 20px;
+}
+
+.self-check-pass {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 12px;
+  color: #167a4e;
+  text-align: center;
+}
+
+.self-check-pass p {
+  margin: 0;
+  font-size: 14px;
+  color: #344054;
+}
+
+.self-check-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.self-check-summary.is-bad {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.self-check-summary.is-warn {
+  background: #fff6e6;
+  color: #b54708;
+}
+
+.self-check-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.self-check-pill.error {
+  background: #f04438;
+  color: #ffffff;
+}
+
+.self-check-pill.warn {
+  background: #f79009;
+  color: #ffffff;
+}
+
+.self-check-group {
+  margin-bottom: 14px;
+}
+
+.self-check-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #eef1f6;
+}
+
+.self-check-icon.error {
+  color: #f04438;
+}
+
+.self-check-icon.warn {
+  color: #f79009;
+}
+
+.self-check-group-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #172033;
+}
+
+.self-check-group-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: #667085;
+}
+
+.self-check-issue-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.self-check-issue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'label detail'
+    'reason reason';
+  gap: 2px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #eef1f6;
+}
+
+.self-check-issue-label {
+  grid-area: label;
+  font-weight: 600;
+  color: #1f2a37;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.self-check-issue-detail {
+  grid-area: detail;
+  font-size: 12px;
+  color: #667085;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.self-check-issue-reason {
+  grid-area: reason;
+  font-size: 12px;
+  color: #475467;
+}
+
+.self-check-foot {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #98a2b3;
+  text-align: center;
+}
+
 .changelog-entry-head {
   display: flex;
   align-items: baseline;

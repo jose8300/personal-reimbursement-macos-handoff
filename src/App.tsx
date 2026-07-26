@@ -16,6 +16,9 @@ import {
   Undo2,
   Trash2,
   Upload,
+  ShieldCheck,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
 import './App.css';
 import { shareState, parseSharedCode, getStateFromHash, clearStateHash, collectLocalData } from './utils/stateShare';
@@ -60,6 +63,7 @@ import {
 import { Footer } from './components/Footer';
 import { parseBillFiles, migrateTransactionMeta } from './utils/parseBills';
 import { detectDuplicates } from './utils/dedupe';
+import { runSelfCheck, SELF_CHECK_LABELS, SELF_CHECK_SEVERITY, type SelfCheckSummary } from './utils/selfCheck';
 import {
   addDays,
   createMonthSelectOptions,
@@ -853,6 +857,8 @@ function App() {
   const [localProgressMessage, setLocalProgressMessage] = useState('');
   const [progressVersions, setProgressVersions] = useState<ProgressVersion[]>(readProgressVersions);
   const [showChangelog, setShowChangelog] = useState(false);
+  const [showSelfCheck, setShowSelfCheck] = useState(false);
+  const [selfCheckResult, setSelfCheckResult] = useState<SelfCheckSummary | null>(null);
   const [showOnlySelected, setShowOnlySelected] = useState(false);
 
   // ---- 撤销 / 重做（支持多步） ----
@@ -2182,6 +2188,12 @@ function App() {
   function exportReimbursementsToCsv() {
     exportReimbursementsAsCsv(reimbursements);
     toast.success(`已导出 CSV：${reimbursements.length} 条`);
+  }
+
+  // 等级三③：报销前自检 —— 对全部已选待报销记录跑校验，输出问题清单，降低被退回重做概率
+  function openSelfCheck() {
+    setSelfCheckResult(runSelfCheck(records));
+    setShowSelfCheck(true);
   }
 
   // 等级三①：结构化报销单
@@ -3917,6 +3929,15 @@ function App() {
               >
                 {isSyncingFeishu ? '同步中...' : '同步到飞书'}
               </button>
+              <button
+                type="button"
+                className="ghost-button result-toolbar-button"
+                disabled={!reimbursements.length}
+                onClick={openSelfCheck}
+                title="导出前检查已选记录是否存在重复 / 缺订单号 / 缺类别 / 金额异常等问题"
+              >
+                <ShieldCheck size={17} /> 报销前自检
+              </button>
               <Popover.Root>
                 <Popover.Trigger asChild>
                   <button
@@ -4151,6 +4172,73 @@ function App() {
                 </ul>
               </section>
             ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {showSelfCheck && selfCheckResult && (
+      <div className="changelog-overlay" onClick={() => setShowSelfCheck(false)}>
+        <div className="changelog-modal self-check-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="changelog-header">
+            <h2>
+              <ShieldCheck size={18} style={{ verticalAlign: '-3px', marginRight: 6 }} />
+              报销前自检
+            </h2>
+            <button type="button" className="changelog-close" onClick={() => setShowSelfCheck(false)}>
+              ✕
+            </button>
+          </div>
+          <div className="changelog-body self-check-body">
+            {selfCheckResult.passed ? (
+              <div className="self-check-pass">
+                <CheckCircle2 size={40} />
+                <p>全部通过：已选 {selfCheckResult.total} 条记录没有发现问题，可以放心导出。</p>
+              </div>
+            ) : (
+              <>
+                <div className={`self-check-summary ${selfCheckResult.errorCount > 0 ? 'is-bad' : 'is-warn'}`}>
+                  <span>已选 {selfCheckResult.total} 条</span>
+                  {selfCheckResult.errorCount > 0 && (
+                    <span className="self-check-pill error">必须处理 {selfCheckResult.errorCount} 项</span>
+                  )}
+                  {selfCheckResult.warningCount > 0 && (
+                    <span className="self-check-pill warn">建议确认 {selfCheckResult.warningCount} 项</span>
+                  )}
+                </div>
+                {(['amountInvalid', 'duplicate', 'refunded', 'missingOrderId', 'missingCategory', 'missingNote', 'missingMeta', 'staleDate'] as const)
+                  .filter((type) => selfCheckResult.issues.some((issue) => issue.type === type))
+                  .map((type) => {
+                    const groupIssues = selfCheckResult.issues.filter((issue) => issue.type === type);
+                    const isError = SELF_CHECK_SEVERITY[type] === 'error';
+                    return (
+                      <section key={type} className="self-check-group">
+                        <div className="self-check-group-head">
+                          {isError ? (
+                            <AlertTriangle size={16} className="self-check-icon error" />
+                          ) : (
+                            <AlertTriangle size={16} className="self-check-icon warn" />
+                          )}
+                          <span className="self-check-group-title">{SELF_CHECK_LABELS[type]}</span>
+                          <span className="self-check-group-count">{groupIssues.length} 条</span>
+                        </div>
+                        <ul className="self-check-issue-list">
+                          {groupIssues.map((issue) => (
+                            <li key={issue.recordId} className="self-check-issue">
+                              <span className="self-check-issue-label">{issue.label}</span>
+                              <span className="self-check-issue-detail">{issue.detail}</span>
+                              <span className="self-check-issue-reason">{issue.reason}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    );
+                  })}
+                <p className="self-check-foot">
+                  自检只标记不自动修改，请回到表格修复后再导出。
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>

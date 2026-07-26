@@ -3246,10 +3246,10 @@ function App() {
               type="button"
               className="ghost-button summary-clear-button"
               disabled={!redoStack.length}
-              title={redoStack.length ? `重做：${redoStack[redoStack.length - 1].label}（Ctrl/⌘+Shift+Z）` : '暂无可重做的操作'}
+              title={redoStack.length ? `恢复：${redoStack[redoStack.length - 1].label}（Ctrl/⌘+Shift+Z）` : '暂无可恢复的操作'}
               onClick={redo}
             >
-              <Redo2 size={16} /> 重做
+              <Redo2 size={16} /> 恢复
             </button>
           </div>
         </div>

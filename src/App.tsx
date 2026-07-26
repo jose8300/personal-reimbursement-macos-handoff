@@ -3205,6 +3205,14 @@ function App() {
     <>
       <main className="app-shell">
       <Toaster position="top-center" richColors closeButton />
+      <div className="topbar-version">
+        <span className="topbar-version-badge">v{__APP_VERSION__}</span>
+        <span className="topbar-version-sep">·</span>
+        <span>更新于 {__APP_BUILD_TIME__}</span>
+        <button type="button" className="topbar-version-link" onClick={() => setShowChangelog(true)}>
+          版本说明
+        </button>
+      </div>
       <header className="topbar">
         <div>
           <p className="eyebrow">本地 MVP</p>
@@ -4072,9 +4080,6 @@ function App() {
       </datalist>
     </main>
     <Footer
-      version={__APP_VERSION__}
-      buildTime={__APP_BUILD_TIME__}
-      onShowChangelog={() => setShowChangelog(true)}
       onExportBackup={exportLocalBackup}
       onImportFile={importLocalBackup}
       onImportFromClipboard={importFromClipboard}

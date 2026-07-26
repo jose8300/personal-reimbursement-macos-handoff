@@ -3215,7 +3215,6 @@ function App() {
       </div>
       <header className="topbar">
         <div>
-          <p className="eyebrow">本地 MVP</p>
           <h1>个人报销自动化小工具</h1>
         </div>
         <div className="summary-strip">

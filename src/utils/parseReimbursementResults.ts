@@ -151,6 +151,7 @@ function createRecordFromResult(
     productName,
     billRemark,
     paymentAccount: paymentAccount || '未识别账户',
+    transactionStatus: '',
     isCompanyExpense: true,
     reimbursementMonth,
     reimburser: reimburser || 'Musk',

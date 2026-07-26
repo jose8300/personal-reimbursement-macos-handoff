@@ -98,6 +98,7 @@ function createRecord(
     'productName',
     'billRemark',
     'paymentAccount',
+    'transactionStatus',
   ] as FieldKey[]).forEach((key) => {
     fields[key] = findHeader(headers, [
       ...(platformConfig?.fields[key] ?? []),
@@ -117,6 +118,7 @@ function createRecord(
       ? metadata['账号'] || metadata['账户'] || readCell(row, fields.paymentAccount)
       : readCell(row, fields.paymentAccount) || metadata['账号'] || metadata['账户'] || '',
   ).trim();
+  const transactionStatus = String(readCell(row, fields.transactionStatus) ?? '').trim();
 
   if (!dateTime || !amount || isIncomeRow(row)) return null;
 
@@ -134,6 +136,7 @@ function createRecord(
     productName,
     billRemark,
     paymentAccount: paymentAccount || '未识别账户',
+    transactionStatus: transactionStatus || '',
     isCompanyExpense: false,
     reimbursementMonth: getMonth(dateTime),
     reimburser: 'Musk',
